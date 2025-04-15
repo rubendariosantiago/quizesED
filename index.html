@@ -49,7 +49,7 @@ function generatePracticalQuestion(type) {
     case 1:
       // y' + a y = b x + c
       questionText = `Resuelve: \\( y' + ${a}y = ${b}x + ${c},\\quad y(0) = ${d} \\)`;
-      const genSol1 = `-(${b}/(${a}*${a}) + ${c}/${a} + ${b}/(${a}^2*exp(${a}*x)) - ${c}/(${a}*exp(${a}*x)) + ${d}/exp(${a}*x) + (${b}*x)/${a}';
+      const genSol1 = `-(${b}/(${a}*${a}) + ${c}/${a} + ${b}/(${a}*${a}*exp(${a}*x)) - ${c}/(${a}*exp(${a}*x)) +${d}/exp(${a}*x) + (${b}*x)/${a}`;
       solutionExpr = genSol1;
       break;
     case 2:
