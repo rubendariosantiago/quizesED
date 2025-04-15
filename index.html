@@ -49,7 +49,7 @@ function generatePracticalQuestion(type) {
     case 1:
       // y' + a y = b x + c
       questionText = `Resuelve: \\( y' + ${a}y = ${b}x + ${c},\\quad y(0) = ${d} \\)`;
-      const genSol1 = `(${b}*x + ${c} - ${b}/${a})/${a} + (${d} - (${c} + ${b}/${a})/${a}) * exp(-${a}*x)`;
+      const genSol1 = `-(${b}/(${a}*${a}) + ${c}/${a} + ${b}/(${a}^2*exp(${a}*x)) - ${c}/(${a}*exp(${a}*x)) + ${d}/exp(${a}*x) + (${b}*x)/${a}';
       solutionExpr = genSol1;
       break;
     case 2:
@@ -63,15 +63,15 @@ function generatePracticalQuestion(type) {
       let c2 = c;
       while (c2 === -a) c2 = randInt(1, 4);
       questionText = `Resuelve: \\( y' + ${a}y = ${b}e^{${c2}x},\\quad y(0) = ${d} \\)`;
-      const genSol3 = `(${b}/(${a} + ${c2}))*exp(${c2}*x) + (${d} - ${b}/(${a} + ${c2}))*exp(-${a}*x)`;
+      const genSol3 = `((${a} + ${c2})*${d} + ${b}*(-1 + exp(( ${a} + ${c2} )*x)))/((${a} + ${c2})*exp(${a}*x))`;
       solutionExpr = genSol3;
       break;
     case 4:
       // y' + a y = cos(b x)
       questionText = `Resuelve: \\( y' + ${a}y = cos(${b}x),\\quad y(0) = ${d} \\)`;
       const denom = `${a}^2 + ${b}^2`;
-      const genSol4 = `(cos(${b}*x) + ${a}*sin(${b}*x))/${denom} + (${d} - 1/${denom})*exp(-${a}*x)`;
-      solutionExpr = genSol4;
+      const genSol4 = `(${a}*cos(${b}*x) + ${b}*sin(${b}*x))/${denom} + (${denom}*$d$ - ${a})/(${denom})*exp(-${a}*x)`;
+  solutionExpr = genSol4;
       break;
   }
 
