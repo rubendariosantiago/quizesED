@@ -7,8 +7,8 @@
     <script>
     window.MathJax = {
       tex: {
-        inlineMath: [['\(','\)']],
-        displayMath: [['\[','\]']]
+        inlineMath: [['\\(','\\)']],
+        displayMath: [['\\[','\\]']]
       }
     };
   </script>
@@ -36,11 +36,11 @@ const TOLERANCIA = 1e-2;
 
 const BANCO_TEORIA = [
   {
-    pregunta: "¿Cuál es el factor integrante para $ y' + 3xy = x $?",
+    pregunta: "¿Cuál es el factor integrante para \\( y' + 3xy = x \\)?",
     opciones: [
       "$ e^{3x} $",
-      "\( e^{x^2} \)",
-      "\( x^3 \)"
+      "\\( e^{x^2} \\)",
+      "\\( x^3 \\)"
     ],
     respuesta: 1,
     explicacion: "El factor integrante es \\( e^{\\int 3x \\, dx} = e^{\\frac{3}{2}x^2} \\)."
@@ -51,42 +51,42 @@ const BANCO_PRACTICAS = [
   {
     tipo: "Tipo 1",
     generar: (a, b, d) => ({
-      pregunta: `Resuelve: $$ y' + ${a}y = ${b} \\,\quad y(0) = ${d} $$`,
+      pregunta: `Resuelve: \\[ y' + ${a}y = ${b} \\,\quad y(0) = ${d} \\]`,
       solucion: `${b / a} + ${d - b / a}*exp(-${a}*x)`
     })
   },
   {
     tipo: "Tipo 2",
     generar: (a, b, d) => ({
-      pregunta: `Resuelve: $$y' + ${a}y = ${b}x \\,\\quad y(0) = ${d} $$`,
+      pregunta: `Resuelve: \\[ y' + ${a}y = ${b}x \\,\\quad y(0) = ${d} \\]`,
       solucion: `${b / a}*x + (${d})*exp(-${a}*x) - ${b / (a * a)}*(1 - exp(-${a}*x))`
     })
   },
   {
     tipo: "Tipo 3",
     generar: (a, b, c, d) => ({
-      pregunta: `Resuelve: $$ y' + ${a}y = ${b}e^{${c}x} \\,\\quad y(0) = ${d} $$`,
+      pregunta: `Resuelve:  \\[ y' + ${a}y = ${b}e^{${c}x} \\,\\quad y(0) = ${d} \\]`,
       solucion: `(${b}/(${a}-${c}))*exp(${c}*x) + (${d} - ${b}/(${a}-${c}))*exp(-${a}*x)`
     })
   },
   {
     tipo: "Tipo 4",
     generar: (a, b, c, d) => ({
-      pregunta: `Resuelve: $$ y' + ${a}y = ${b}cos(${c}x) \\,\\quad y(0) = ${d} $$`,
+      pregunta: `Resuelve:  \\[ y' + ${a}y = ${b}cos(${c}x) \\,\\quad y(0) = ${d} \\]`,
       solucion: `(${b}*(${a}*cos(${c}*x)+${c}*sin(${c}*x))/(${a}*${a}+${c}*${c})) + (${d} - (${b}*${a}/(${a}*${a}+${c}*${c}))) * exp(-${a}*x)`
     })
   },
   {
     tipo: "Tipo 5",
     generar: (a, b, c, d) => ({
-      pregunta: `Resuelve: $$ y' + ${a}y = ${b}sin(${c}x) \\,\\quad y(0) = ${d} $$`,
+      pregunta: `Resuelve: \\[ y' + ${a}y = ${b}sin(${c}x) \\,\\quad y(0) = ${d} \\]`,
       solucion: `(${b}*(${a}*sin(${c}*x)-${c}*cos(${c}*x))/(${a}*${a}+${c}*${c})) + (${d} - (${b}*${a}/(${a}*${a}+${c}*${c}))) * exp(-${a}*x)`
     })
   },
   {
     tipo: "Tipo 6",
     generar: (a, b, d) => ({
-      pregunta: `Resuelve: $$ y' + ${a}y = ${b}e^{- ${a}x} \\,\\quad y(0) = ${d} $$`,
+      pregunta: `Resuelve:  \\[ y' + ${a}y = ${b}e^{- ${a}x} \\,\\quad y(0) = ${d} \\]`,
       solucion: `${d + b}*exp(-${a}*x) - ${b}`
     })
   }
