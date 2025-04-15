@@ -39,7 +39,7 @@ function randNonZero(min, max) {
 }
 
 function randCoeff() {
-  return randNonZero(2, 5) * (Math.random() > 0.5 ? 1 : -1);
+  return randNonZero(2, 5) ;
 }
 
 function randInitial() {
@@ -60,11 +60,11 @@ function generateEDO() {
   switch (type) {
     case 1:  // y' + a*y = b
       question = `Resuelve: \\( y' + ${a}y = ${b} \\), \\( y(${x0}) = ${d} \\)`;
-      solution = `${b/${a}} + ${d - b/a}*exp(-${a}*x)`;
+      solution = `${b}/${a} + ${d - b/a}*exp(-${a}*x)`;
       break;
     case 2:  // y' + a*y = b*x
       question = `Resuelve: \\( y' + ${a}y = ${b}x \\), \\( y(${x0}) = ${d} \\)`;
-      solution = `${b/${a}}x - ${b/(a*a)} + ${d + b/(a*a)}*exp(-${a}*x)`;
+      solution = `${b}/${a}*x - ${b/(a*a)} + ${d + b/(a*a)}*exp(-${a}*x)`;
       break;
     case 3:  // y' + a*y = b*exp(c*x), a ≠ -c
       question = `Resuelve: \\( y' + ${a}y = ${b}e^{${c}x} \\), \\( y(${x0}) = ${d} \\)`;
