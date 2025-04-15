@@ -1,212 +1,167 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>Examen Parametrizado: EDO</title>
+  <meta charset="UTF-8">
+  <title>Examen de Ecuaciones Diferenciales Parametrizadas</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 30px; background: #f2f2f2; }
-    h1 { color: #003366; }
-    .question { background: #fff; padding: 20px; margin: 20px 0; border-radius: 10px; box-shadow: 0 0 10px #ccc; }
-    .feedback { margin-top: 10px; font-weight: bold; }
-    .correct { color: green; }
-    .incorrect { color: red; }
-    input[type="text"] { width: 100%; padding: 8px; font-size: 16px; }
-    button { padding: 10px 20px; font-size: 16px; margin-top: 20px; }
-    label { display: block; margin-bottom: 8px; }
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .question { background: #f9f9f9; padding: 15px; margin: 20px 0; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    .feedback { margin-top: 10px; padding: 10px; border-radius: 5px; }
+    .correct { background: #e6f7e6; border-left: 4px solid #4CAF50; }
+    .incorrect { background: #ffebee; border-left: 4px solid #f44336; }
+    button { background: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+    #result { font-size: 18px; margin: 20px 0; padding: 15px; text-align: center; }
+    .hidden { display: none; }
+    input[type="text"] { width: 100%; padding: 8px; margin-top: 5px; }
   </style>
 </head>
 <body>
 
 <h1>Examen de Ecuaciones Diferenciales</h1>
 <div id="quiz"></div>
-<button onclick="submitExam()">Enviar respuestas</button>
-<div id="result"></div>
-<button onclick="location.reload()">Nuevo examen</button>
+<button onclick="submitExam()">Enviar Examen</button>
+<div id="result" class="hidden"></div>
 
 <script>
-const PRACTICAL_TYPES = [1, 2, 3, 4];
-const TOL = 1e-2;
+// ---------------------- CONFIGURACIÓN ----------------------
+const TOLERANCIA = 1e-2;  // Tolerancia para el error cuadrático medio
 
-function randInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+// ---------------------- GENERADOR DE COEFICIENTES ----------------------
+function randNonZero(min, max) {
+  let num;
+  do {
+    num = Math.floor(Math.random() * (max - min + 1)) + min;
+  } while (num === 0 || num === 1 || num === -1);
+  return num;
 }
 
-function pickRandom(arr, n) {
-  return arr.sort(() => 0.5 - Math.random()).slice(0, n);
+function randCoeff() {
+  return randNonZero(2, 5) * (Math.random() > 0.5 ? 1 : -1);
 }
 
-// ---------------------- Preguntas prácticas ----------------------
-function generatePracticalQuestion(type) {
-  const a = randInt(2, 5);
-  const b = randInt(2, 5);
-  const c = randInt(2, 4);
-  const d = randInt(1, 5);
+function randInitial() {
+  return Math.floor(Math.random() * 7) - 3;  // d ∈ [-3, 3]
+}
 
-  let questionText = "";
-  let solutionExpr = "";
+// ---------------------- GENERADOR DE ECUACIONES ----------------------
+function generateEDO() {
+  const a = randCoeff();
+  const b = randCoeff();
+  const c = randCoeff();
+  const d = randInitial();
+  const x0 = 0;
+
+  const type = Math.floor(Math.random() * 6) + 1;  // 6 tipos
+  let question, solution;
 
   switch (type) {
-    case 1:
-      // y' + a y = b x + c
-      questionText = `Resuelve: \\[ y' + ${a}y = ${b}x + ${c},\\quad y(0) = ${d} \\]`;
-      const genSol1 = `-(${b}/(${a}*${a}) + ${c}/${a} + ${b}/(${a}*${a}*exp(${a}*x)) - ${c}/(${a}*exp(${a}*x)) +${d}/exp(${a}*x) + (${b}*x)/${a}`;
-      solutionExpr = genSol1;
+    case 1:  // y' + a*y = b
+      question = `Resuelve: \\( y' + ${a}y = ${b} \\), \\( y(${x0}) = ${d} \\)`;
+      solution = `${b/${a}} + ${d - b/a}*exp(-${a}*x)`;
       break;
-    case 2:
-      // y' + a y = b exp(-a x)
-      questionText = `Resuelve: \\( y' + ${a}y = ${b}e^{- ${a}x},\\quad y(0) = ${d} \\)`;
-      const genSol2 = `${d}*exp(-${a}*x) + ${b}*x*exp(-${a}*x)`;
-      solutionExpr = genSol2;
+    case 2:  // y' + a*y = b*x
+      question = `Resuelve: \\( y' + ${a}y = ${b}x \\), \\( y(${x0}) = ${d} \\)`;
+      solution = `${b/${a}}x - ${b/(a*a)} + ${d + b/(a*a)}*exp(-${a}*x)`;
       break;
-    case 3:
-      // y' + a y = b exp(c x), c ≠ -a
-      let c2 = c;
-      while (c2 === -a) c2 = randInt(1, 4);
-      questionText = `Resuelve: \\( y' + ${a}y = ${b}e^{${c2}x},\\quad y(0) = ${d} \\)`;
-      const genSol3 = `((${a} + ${c2})*${d} + ${b}*(-1 + exp(( ${a} + ${c2} )*x)))/((${a} + ${c2})*exp(${a}*x))`;
-      solutionExpr = genSol3;
+    case 3:  // y' + a*y = b*exp(c*x), a ≠ -c
+      question = `Resuelve: \\( y' + ${a}y = ${b}e^{${c}x} \\), \\( y(${x0}) = ${d} \\)`;
+      solution = `${b/(a + c)}*exp(${c}*x) + ${d - b/(a + c)}*exp(-${a}*x)`;
       break;
-    case 4:
-      // y' + a y = cos(b x)
-      questionText = `Resuelve: \\( y' + ${a}y = cos(${b}x),\\quad y(0) = ${d} \\)`;
-      const denom = `${a}^2 + ${b}^2`;
-      const genSol4 = `(${a}*cos(${b}*x) + ${b}*sin(${b}*x))/${denom} + (${denom}*$d$ - ${a})/(${denom})*exp(-${a}*x)`;
-  solutionExpr = genSol4;
+    case 4:  // y' + a*y = b*cos(c*x)
+      question = `Resuelve: \\( y' + ${a}y = ${b}\\cos(${c}x) \\), \\( y(${x0}) = ${d} \\)`;
+      solution = `${b/(a*a + c*c)}*(${a}*cos(${c}x) + ${c}*sin(${c}x)) + ${d - (a*b)/(a*a + c*c)}*exp(-${a}*x)`;
+      break;
+    case 5:  // y' + a*y = b*sin(c*x)
+      question = `Resuelve: \\( y' + ${a}y = ${b}\\sin(${c}x) \\), \\( y(${x0}) = ${d} \\)`;
+      solution = `${b/(a*a + c*c)}*(${a}*sin(${c}x) - ${c}*cos(${c}x)) + ${d + (c*b)/(a*a + c*c)}*exp(-${a}*x)`;
+      break;
+    case 6:  // y' + a*y = b*exp(-a*x)
+      question = `Resuelve: \\( y' + ${a}y = ${b}e^{-${a}x} \\), \\( y(${x0}) = ${d} \\)`;
+      solution = `${d}*exp(-${a}*x) + ${b}*x*exp(-${a}*x)`;
       break;
   }
 
-  return {
-    text: questionText,
-    solution: solutionExpr,
-    id: `practical${type}`
-  };
+  return { question, solution, type };
 }
 
-// ---------------------- Preguntas teóricas ----------------------
-const THEORY_BANK = [
-  {
-    question: "¿Cuál es la forma general de una ED lineal de primer orden?",
-    options: ["y' + p(x)y = q(x)", "y'' + p(x)y' = q(x)", "y = Ce^{ax}", "y = mx + b"],
-    answer: 0
-  },
-  {
-    question: "¿Cuál es el método más común para resolver una ED lineal de primer orden?",
-    options: ["Separación de variables", "Transformada de Laplace", "Factor integrante", "Series de potencias"],
-    answer: 2
-  },
-  {
-    question: "¿Cuál es la solución general de y' + ay = 0?",
-    options: ["y = Ce^{-ax}", "y = ax + C", "y = Cx^a", "y = Ce^{ax}"],
-    answer: 0
-  },
-  {
-    question: "¿Qué representa una solución particular?",
-    options: [
-      "Una solución con condiciones iniciales",
-      "Una solución general",
-      "Una constante de integración",
-      "Una solución numérica"
-    ],
-    answer: 0
-  },
-  {
-    question: "¿Qué condición debe cumplirse para aplicar factor integrante?",
-    options: [
-      "La ED debe estar escrita como y'' + p(x)y' = q(x)",
-      "La ED debe ser de segundo orden",
-      "La ED debe ser lineal y de primer orden",
-      "Debe tener solución exacta"
-    ],
-    answer: 2
-  }
-];
-
-function generateTheoryQuestions(n) {
-  return pickRandom(THEORY_BANK, n).map((item, idx) => ({
-    ...item,
-    id: `theory${idx}`
-  }));
-}
-
-// ---------------------- Renderizado ----------------------
-const practicalQuestions = pickRandom(PRACTICAL_TYPES, 3).map(generatePracticalQuestion);
-const theoryQuestions = generateTheoryQuestions(2);
-
-function renderQuiz() {
-  const container = document.getElementById('quiz');
-
-  practicalQuestions.forEach(q => {
-    container.innerHTML += `
-      <div class="question">
-        <p><strong>${q.text}</strong></p>
-        <label>Ingresa tu respuesta en notación matemática (en función de x):</label>
-        <input type="text" id="${q.id}">
-        <div id="${q.id}_feedback" class="feedback"></div>
-      </div>`;
-  });
-
-  theoryQuestions.forEach((q, i) => {
-    let optionsHTML = q.options.map((opt, idx) => `
-      <label><input type="radio" name="${q.id}" value="${idx}"> ${opt}</label>
-    `).join('');
-    container.innerHTML += `
-      <div class="question">
-        <p><strong>${q.question}</strong></p>
-        ${optionsHTML}
-        <div id="${q.id}_feedback" class="feedback"></div>
-      </div>`;
-  });
-}
-
-renderQuiz();
-
-// ---------------------- Evaluación ----------------------
-function exprMatches(userExpr, expectedExpr) {
+// ---------------------- EVALUADOR NUMÉRICO (ECM) ----------------------
+function evaluateSolution(userExpr, correctExpr) {
   try {
-    const x = randInt(1, 3);
-    const u = math.evaluate(userExpr, { x });
-    const e = math.evaluate(expectedExpr, { x });
-    return Math.abs(u - e) < TOL;
-  } catch {
+    let errors = [];
+    for (let i = 0; i < 10; i++) {
+      const x = math.random(0.1, 3);  // Evitar x=0 para divisiones
+      const yUser = math.evaluate(userExpr, { x });
+      const yCorrect = math.evaluate(correctExpr, { x });
+      errors.push(math.pow(yUser - yCorrect, 2));
+    }
+    return math.mean(errors) < TOLERANCIA;
+  } catch (error) {
     return false;
   }
 }
 
+// ---------------------- RENDERIZAR EXAMEN ----------------------
+function renderExam() {
+  const quizContainer = document.getElementById('quiz');
+  quizContainer.innerHTML = '';
+
+  // Generar 3 ejercicios aleatorios sin repetir tipo
+  const usedTypes = [];
+  while (usedTypes.length < 3) {
+    const edo = generateEDO();
+    if (!usedTypes.includes(edo.type)) {
+      usedTypes.push(edo.type);
+      quizContainer.innerHTML += `
+        <div class="question" data-type="${edo.type}" data-solution="${edo.solution.replace(/\*/g, '')}">
+          <p><strong>Ejercicio ${usedTypes.length}:</strong> ${edo.question}</p>
+          <input type="text" placeholder="Ingresa y(x)..." class="answer-input">
+          <div class="feedback hidden"></div>
+        </div>
+      `;
+    }
+  }
+}
+
+// ---------------------- ENVIAR EXAMEN ----------------------
 function submitExam() {
   let score = 0;
+  const questions = document.querySelectorAll('.question');
 
-  // Evaluar prácticas
-  practicalQuestions.forEach(q => {
-    const input = document.getElementById(q.id).value;
-    const fb = document.getElementById(`${q.id}_feedback`);
-    if (exprMatches(input, q.solution)) {
-      fb.textContent = "✅ Correcto";
-      fb.className = "feedback correct";
+  questions.forEach((q, i) => {
+    const userAnswer = q.querySelector('.answer-input').value;
+    const correctAnswer = q.dataset.solution;
+    const feedback = q.querySelector('.feedback');
+
+    if (evaluateSolution(userAnswer, correctAnswer)) {
+      feedback.innerHTML = '✅ Correcto!';
+      feedback.className = 'feedback correct';
       score++;
     } else {
-      fb.textContent = `❌ Incorrecto. Solución esperada (forma simbólica equivalente a): ${q.solution}`;
-      fb.className = "feedback incorrect";
+      feedback.innerHTML = `❌ Incorrecto. Solución: \\( ${correctAnswer} \\)`;
+      feedback.className = 'feedback incorrect';
     }
+    feedback.classList.remove('hidden');
   });
 
-  // Evaluar teóricas
-  theoryQuestions.forEach(q => {
-    const selected = document.querySelector(`input[name="${q.id}"]:checked`);
-    const fb = document.getElementById(`${q.id}_feedback`);
-    if (selected && parseInt(selected.value) === q.answer) {
-      fb.textContent = "✅ Correcto";
-      fb.className = "feedback correct";
-      score++;
-    } else {
-      fb.textContent = `❌ Incorrecto. Respuesta correcta: ${q.options[q.answer]}`;
-      fb.className = "feedback incorrect";
-    }
-  });
+  // Mostrar resultado
+  const resultDiv = document.getElementById('result');
+  resultDiv.innerHTML = `
+    <h3>Resultado: ${score}/${questions.length}</h3>
+    ${score === questions.length ? '🎉 ¡Perfecto!' : '💡 ¡Sigue practicando!'}
+  `;
+  resultDiv.classList.remove('hidden');
 
-  document.getElementById('result').innerHTML =
-    `<h3>Calificación final: ${score} / 5</h3>`;
+  // Renderizar MathJax (para las soluciones)
+  if (window.MathJax) {
+    MathJax.typeset();
+  }
 }
-</script>
 
+// Iniciar examen
+renderExam();
+</script>
 </body>
 </html>
