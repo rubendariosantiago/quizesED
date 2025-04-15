@@ -2,40 +2,37 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Prueba Preguntas</title>
-  <style>
-    body { font-family: sans-serif; padding: 2em; }
-    .pregunta { margin-bottom: 2em; background: #f2f2f2; padding: 1em; border-radius: 6px; }
-  </style>
+  <title>Examen</title>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script type="text/javascript" id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 
-<h1>Test de Generación</h1>
-<div id="examen"></div>
+<h1>Examen Demo</h1>
+<div id="contenedor"></div>
 
 <script>
-  const preguntas = [
-    {
-      pregunta: "¿Cuál es la derivada de \\( x^2 \\)?",
-      opciones: ["2x", "x", "x^2"],
-      respuesta: 0
-    }
-  ];
-
-  function generar() {
-    const div = document.getElementById("examen");
-    preguntas.forEach((p, i) => {
-      const cont = document.createElement("div");
-      cont.className = "pregunta";
-      cont.innerHTML = `<b>Pregunta ${i + 1}:</b> ${p.pregunta}<br>` +
-        p.opciones.map((op, j) =>
-          `<label><input type="radio" name="p${i}" value="${j}"> ${op}</label><br>`
-        ).join("");
-      div.appendChild(cont);
-    });
+const preguntas = [
+  {
+    pregunta: "¿Cuál es la solución de \\( y' = y \\)?",
+    opciones: ["\\( y = Ce^x \\)", "\\( y = x^2 \\)", "\\( y = e^{-x} \\)"],
+    respuesta: 0
   }
+];
 
-  window.onload = generar;
+window.onload = () => {
+  const cont = document.getElementById("contenedor");
+  preguntas.forEach((p, i) => {
+    const div = document.createElement("div");
+    div.innerHTML = `<p>${p.pregunta}</p>` +
+      p.opciones.map((op, j) =>
+        `<label><input type="radio" name="p${i}" value="${j}"> ${op}</label><br>`
+      ).join("");
+    cont.appendChild(div);
+  });
+  MathJax.typeset();
+};
 </script>
 
 </body>
