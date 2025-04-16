@@ -1,3 +1,4 @@
+const practica = {
 [
   {
     "type": "positivo",
@@ -46,3 +47,4 @@
     }
   }
 ]
+};
