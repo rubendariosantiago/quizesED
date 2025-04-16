@@ -1,3 +1,4 @@
+const teorica = {
 [
   {
     "question": "Para la EDO lineal \\( y' + P(x)y = Q(x) \\), el factor integrante es:",
@@ -88,3 +89,4 @@
     "solution": "EDO separable clásica: \\( \\frac{dy}{y} = kdx \\Rightarrow \\ln|y| = kx + C \\Rightarrow y = Ce^{kx} \\)."
   }
 ]
+};
