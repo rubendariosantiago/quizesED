@@ -1,0 +1,49 @@
+[
+  {
+    "type": "positivo",
+    "template": "Resuelve: \( y' + {{a}}y = {{b}} \), \( y(0) = {{d}} \)",
+    "solution": "{{b}}/{{a}} + ({{d}} - {{b}}/{{a}})e^{-{{a}}x}",
+    "conditions": ["b != 0"],  // Restricción adicional
+    "params": {
+      "a": {"min": 2, "max": 5},  // a > 1
+      "b": {"min": -4, "max": 4},
+      "d": {"min": -3, "max": 3}
+    }
+  },
+  {
+    "type": "negativo",
+    "template": "Resuelve: \( y' - {{a}}y = {{b}}e^{{{c}}x} \), \( y(0) = {{d}} \)",
+    "solution": "{{b}}/({{c}}-{{a}})e^{{{c}}x} + ({{d}} - {{b}}/({{c}}-{{a}}))e^{{{a}}x}",
+    "conditions": ["c != a"],  // Restricción adicional
+    "params": {
+      "a": {"min": 2, "max": 4},  // a > 0
+      "b": {"min": 2, "max": 4},
+      "c": {"min": 2, "max": 4},
+      "d": {"min": -3, "max": 3}
+    }
+  },
+  {
+    "type": "postivo",
+    "template": "Resuelve: \( y' + {{a}}y = {{b}}e^{{{c}}x} \), \( y(0) = {{d}} \)",
+    "solution": "{{b}}/({{c}}+{{a}})e^{{{c}}x} + ({{d}} - {{b}}/({{c}}+{{a}}))e^{{{-a}}x}",
+    "conditions": ["c != -a"],  // Restricción adicional
+    "params": {
+      "a": {"min": 2, "max": 4},  // a > 0
+      "b": {"min": 2, "max": 4},
+      "c": {"min": 2, "max": 4},
+      "d": {"min": -3, "max": 3}
+    }
+  },
+  {
+    "type": "postivo",
+    "template": "Resuelve: \( y' + {{a}}y = {{b}}cos( {{c}}x ) \), \( y(0) = {{d}} \)",
+    "solution": "({{a}}^2 {{d}} e^{{{-a}} x}+{{a}} {{b}} \cos ({{c}} x)-{{a}} {{ b}} e^{{{-a}} x}+{{c}}^2 {{d}} e^{{{-a}} x}+{{b}} {{c}} \sin  ({{c}} x))/({{a}}^2+{{c}}^2)",
+    "params": {
+      "a": {"min": 2, "max": 4},  // a > 0
+      "b": {"min": 2, "max": 4},
+      "c": {"min": 2, "max": 4},
+      "d": {"min": -3, "max": 3}
+    }
+  }
+  // ... (otros tipos)
+]
