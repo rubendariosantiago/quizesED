@@ -7,8 +7,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-  <script src="teorica.js"></script>
-   <script src="practica.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -97,7 +96,8 @@
 <div id="quiz"></div>
 <button id="submit-btn">Enviar Examen</button>
 <div id="result" class="hidden"></div>
-
+  <script src="teorica.js"></script>
+   <script src="practica.js"></script>
 <script>
   // ---------------------- CONFIGURACIÓN ----------------------
   const TOLERANCE = 1e-2;
@@ -132,8 +132,8 @@
     
     // Cargar datos de ejemplo en caso de error
 //    loadFallbackData();
-  }
-}
+//  }
+//}
 
 // Datos de ejemplo para desarrollo
 //function loadFallbackData() {
@@ -146,18 +146,18 @@
 //    }
 //  ];
 
-  practicalTemplates = [
-    {
-      type: "ejemplo",
-      template: "Resuelve: y' + 2y = 4, y(0) = 1",
-      solution: "2 - e^(-2x)",
-      steps: ["Paso 1: Identificar P(x) = 2", "Paso 2: Factor integrante = e^(2x)"],
-      params: {}
-    }
-  ];
+//  practicalTemplates = [
+//    {
+//      type: "ejemplo",
+//      template: "Resuelve: y' + 2y = 4, y(0) = 1",
+//      solution: "2 - e^(-2x)",
+//      steps: ["Paso 1: Identificar P(x) = 2", "Paso 2: Factor integrante = e^(2x)"],
+//      params: {}
+//    }
+//  ];
 
-  generateExam();
-}
+//  generateExam();
+//}
 
   // ---------------------- GENERAR EXAMEN ----------------------
   function generateExam() {
