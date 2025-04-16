@@ -7,6 +7,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script src="teorica.js"></script>
+   <script src="practica.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -104,45 +106,45 @@
   let examQuestions = [];
 
   // ---------------------- CARGAR BANCOS DE PREGUNTAS ----------------------
-async function loadQuestions() {
-  try {
+//async function loadQuestions() {
+//  try {
     // Cargar preguntas teóricas (usando ruta relativa correcta)
-    const theoryResponse = await fetch('teorica.json');
-    if (!theoryResponse.ok) throw new Error("Error cargando teorica.json");
-    theoryQuestions = await theoryResponse.json();
+//    const theoryResponse = await fetch('teorica.json');
+ //   if (!theoryResponse.ok) throw new Error("Error cargando teorica.json");
+//    theoryQuestions = await theoryResponse.json();
     
     // Cargar plantillas prácticas
-    const practicalResponse = await fetch('practica.json');
-    if (!practicalResponse.ok) throw new Error("Error cargando practica.json");
-    practicalTemplates = await practicalResponse.json();
+//    const practicalResponse = await fetch('practica.json');
+//    if (!practicalResponse.ok) throw new Error("Error cargando practica.json");
+//    practicalTemplates = await practicalResponse.json();
     
-    generateExam();
-  } catch (error) {
-    console.error("Error cargando preguntas:", error);
+//    generateExam();
+//  } catch (error) {
+//    console.error("Error cargando preguntas:", error);
     
     // Mensaje más descriptivo
-    const errorMsg = `No se pudieron cargar las preguntas. Verifica que:
-    1. Exista la carpeta 'questions' con los archivos 'teorica.json' y 'practica.json'
-    2. Los nombres de los archivos estén escritos exactamente así
-    3. El servidor web esté funcionando correctamente`;
+//    const errorMsg = `No se pudieron cargar las preguntas. Verifica que:
+//    1. Exista la carpeta 'questions' con los archivos 'teorica.json' y 'practica.json'
+//    2. Los nombres de los archivos estén escritos exactamente así
+//    3. El servidor web esté funcionando correctamente`;
     
-    alert(errorMsg);
+//    alert(errorMsg);
     
     // Cargar datos de ejemplo en caso de error
-    loadFallbackData();
+//    loadFallbackData();
   }
 }
 
 // Datos de ejemplo para desarrollo
-function loadFallbackData() {
-  theoryQuestions = [
-    {
-      question: "Ejemplo teórico: ¿Cuál es el factor integrante para y' + 2y = 0?",
-      options: ["e^(2x)", "e^(-2x)", "2x", "x^2"],
-      answer: 0,
-      solution: "Solución de ejemplo: μ(x) = e^(∫2dx) = e^(2x)"
-    }
-  ];
+//function loadFallbackData() {
+//  theoryQuestions = [
+//    {
+//      question: "Ejemplo teórico: ¿Cuál es el factor integrante para y' + 2y = 0?",
+//      options: ["e^(2x)", "e^(-2x)", "2x", "x^2"],
+//      answer: 0,
+//      solution: "Solución de ejemplo: μ(x) = e^(∫2dx) = e^(2x)"
+//    }
+//  ];
 
   practicalTemplates = [
     {
