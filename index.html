@@ -157,7 +157,7 @@
 //  ];
 
 //  generateExam();
-//}
+//  }
 
   // ---------------------- GENERAR EXAMEN ----------------------
   function generateExam() {
@@ -280,68 +280,44 @@
           feedbackElement.className = 'feedback correct';
         } else {
           feedbackElement.innerHTML = `
-            ❌ Incorrecto. Solución: <span class="mathjax">\\( ${q.solution} \\)</span>
-            <div class="solution-steps">
-              <strong>Pasos:</strong><br>
-              ${q.steps.map(step => `• ${step}`).join('<br>')}
-            </div>
+            ❌ Incorrecto. La solución correcta es: <span class="mathjax">${q.solution}</span>
+            <div class="solution-steps">${q.steps.map(step => `<div>${step}</div>`).join('')}</div>
           `;
           feedbackElement.className = 'feedback incorrect';
         }
       }
-      
+
       feedbackElement.classList.remove('hidden');
-      results.push({
-        type: q.type,
-        question: q.question,
-        userAnswer: q.type === 'theory' ? 
-          (questionElement.querySelector('input[type="radio"]:checked')?.value || 'Sin responder') : 
-          userAnswer,
-        isCorrect: q.type === 'theory' ? 
-          (parseInt(questionElement.querySelector('input[type="radio"]:checked')?.value) === q.correctAnswer) : 
-          evaluateSolution(userAnswer, q.solution)
-      });
     });
 
-    // Mostrar resultado
-    const resultDiv = document.getElementById('result');
-    resultDiv.innerHTML = `
-      <h3>Resultado: ${score}/${examQuestions.length}</h3>
-      <p>${score === examQuestions.length ? '🎉 ¡Excelente trabajo!' : '💡 ¡Sigue practicando!'}</p>
-    `;
-    resultDiv.classList.remove('hidden');
+    const resultContainer = document.getElementById('result');
+    resultContainer.innerHTML = `Tu calificación final es <strong>${score} / ${examQuestions.length}</strong>`;
+    resultContainer.classList.remove('hidden');
 
-    // Renderizar MathJax para las soluciones
     if (window.MathJax) {
       MathJax.typesetPromise();
     }
   }
 
-  // ---------------------- EVALUADOR NUMÉRICO ----------------------
-  function evaluateSolution(userExpr, correctExpr) {
+  // ---------------------- COMPARACIÓN DE RESPUESTAS PRÁCTICAS ----------------------
+  function evaluateSolution(input, expected) {
     try {
-      // Eliminar comandos LaTeX para mathjs
-      const cleanUserExpr = userExpr.replace(/\\/g, '');
-      const cleanCorrectExpr = correctExpr.replace(/\\/g, '');
-      
-      let errors = [];
-      for (let i = 0; i < 10; i++) {
-        const x = math.random(0.1, 3);
-        const yUser = math.evaluate(cleanUserExpr, { x });
-        const yCorrect = math.evaluate(cleanCorrectExpr, { x });
-        errors.push(math.pow(yUser - yCorrect, 2));
-      }
-      return math.mean(errors) < TOLERANCE;
-    } catch (error) {
+      const simplifiedInput = math.simplify(input).toString();
+      const simplifiedExpected = math.simplify(expected).toString();
+      return math.equal(math.simplify(`(${simplifiedInput}) - (${simplifiedExpected})`), 0);
+    } catch (e) {
+      console.error("Error comparando soluciones:", e);
       return false;
     }
   }
 
-  // ---------------------- EVENT LISTENERS ----------------------
-  document.getElementById('submit-btn').addEventListener('click', submitExam);
-
-  // Iniciar al cargar la página
-  window.addEventListener('DOMContentLoaded', loadQuestions);
+  // ---------------------- INICIO ----------------------
+  window.onload = () => {
+    // Si no usas archivos JSON externos, puedes tener los datos ya cargados desde teorica.js y practica.js
+    generateExam();
+    document.getElementById('submit-btn').addEventListener('click', submitExam);
+  };
 </script>
 </body>
 </html>
+
