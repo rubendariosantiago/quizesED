@@ -107,12 +107,12 @@
 async function loadQuestions() {
   try {
     // Cargar preguntas teóricas (usando ruta relativa correcta)
-    const theoryResponse = await fetch('./questions/teorica.json');
+    const theoryResponse = await fetch('teorica.json');
     if (!theoryResponse.ok) throw new Error("Error cargando teorica.json");
     theoryQuestions = await theoryResponse.json();
     
     // Cargar plantillas prácticas
-    const practicalResponse = await fetch('./questions/practica.json');
+    const practicalResponse = await fetch('practica.json');
     if (!practicalResponse.ok) throw new Error("Error cargando practica.json");
     practicalTemplates = await practicalResponse.json();
     
