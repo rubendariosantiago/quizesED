@@ -107,11 +107,11 @@
   async function loadQuestions() {
     try {
       // Cargar preguntas teóricas
-      const theoryResponse = await fetch('questions/teorica.json');
+      const theoryResponse = await fetch('https://rubendariosantiago.github.io/quizesED/questions/teorica.json');
       theoryQuestions = await theoryResponse.json();
       
       // Cargar plantillas prácticas
-      const practicalResponse = await fetch('questions/practica.json');
+      const practicalResponse = await fetch('https://rubendariosantiago.github.io/quizesED/questions/practica.json');
       practicalTemplates = await practicalResponse.json();
       
       generateExam();
