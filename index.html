@@ -2,197 +2,92 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Examen EDOs</title>
+  <title>Examen Dinámico</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script>
-    window.MathJax = {
-      tex: {
-        inlineMath: [['\\(','\\)']],
-        displayMath: [['\\[','\\]']]
-      }
-    };
-  </script>
-
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-    .question { margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px; }
-    button { background: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
-    .feedback { margin-top: 10px; padding: 10px; border-radius: 5px; display: none; }
-    .correct { background: #e6f7e6; border-left: 4px solid #4CAF50; }
-    .incorrect { background: #ffebee; border-left: 4px solid #f44336; }
-  </style>
 </head>
 <body>
+  <div id="quiz"></div>
+  <button id="submit">Enviar</button>
 
-<h1>Examen de Ecuaciones Diferenciales</h1>
-<div id="quiz"></div>
-<button onclick="submitExam()">Enviar</button>
-<div id="result"></div>
+  <script>
+    // ---------------------- CARGAR BANCOS DE PREGUNTAS ----------------------
+    let theoryQuestions = [];
+    let practicalTemplates = [];
 
-<script>
-const TOLERANCIA = 1e-2;
-
-const BANCO_TEORIA = [
-  {
-    pregunta: "¿Cuál es el factor integrante para \\\\( y' + 3xy = x \\\\)?",
-    opciones: [
-      "$ e^{3x} $",
-      "\\( e^{x^2} \\)",
-      "\\( x^3 \\)"
-    ],
-    respuesta: 1,
-    explicacion: "El factor integrante es \\( e^{\\int 3x \\, dx} = e^{\\frac{3}{2}x^2} \\)."
-  }
-];
-
-const BANCO_PRACTICAS = [
-  {
-    tipo: "Tipo 1",
-    generar: (a, b, d) => ({
-      pregunta: `Resuelve: \\[ y' + ${a}y = ${b} \\,\quad y(0) = ${d} \\]`,
-      solucion: `${b / a} + ${d - b / a}*exp(-${a}*x)`
-    })
-  },
-  {
-    tipo: "Tipo 2",
-    generar: (a, b, d) => ({
-      pregunta: `Resuelve: \\[ y' + ${a}y = ${b}x \\,\\quad y(0) = ${d} \\]`,
-      solucion: `${b / a}*x + (${d})*exp(-${a}*x) - ${b / (a * a)}*(1 - exp(-${a}*x))`
-    })
-  },
-  {
-    tipo: "Tipo 3",
-    generar: (a, b, c, d) => ({
-      pregunta: `Resuelve:  \\[ y' + ${a}y = ${b}e^{${c}x} \\,\\quad y(0) = ${d} \\]`,
-      solucion: `(${b}/(${a}-${c}))*exp(${c}*x) + (${d} - ${b}/(${a}-${c}))*exp(-${a}*x)`
-    })
-  },
-  {
-    tipo: "Tipo 4",
-    generar: (a, b, c, d) => ({
-      pregunta: `Resuelve:  \\[ y' + ${a}y = ${b}cos(${c}x) \\,\\quad y(0) = ${d} \\]`,
-      solucion: `(${b}*(${a}*cos(${c}*x)+${c}*sin(${c}*x))/(${a}*${a}+${c}*${c})) + (${d} - (${b}*${a}/(${a}*${a}+${c}*${c}))) * exp(-${a}*x)`
-    })
-  },
-  {
-    tipo: "Tipo 5",
-    generar: (a, b, c, d) => ({
-      pregunta: `Resuelve: \\[ y' + ${a}y = ${b}sin(${c}x) \\,\\quad y(0) = ${d} \\]`,
-      solucion: `(${b}*(${a}*sin(${c}*x)-${c}*cos(${c}*x))/(${a}*${a}+${c}*${c})) + (${d} - (${b}*${a}/(${a}*${a}+${c}*${c}))) * exp(-${a}*x)`
-    })
-  },
-  {
-    tipo: "Tipo 6",
-    generar: (a, b, d) => ({
-      pregunta: `Resuelve:  \\[ y' + ${a}y = ${b}e^{- ${a}x} \\,\\quad y(0) = ${d} \\]`,
-      solucion: `${d + b}*exp(-${a}*x) - ${b}`
-    })
-  }
-];
-
-function aleatorio(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function aleatorioSigno(n) {
-  return (Math.random() < 0.5 ? -1 : 1) * aleatorio(n, n + 2);
-}
-
-function seleccionarAleatorios(arr, n) {
-  return arr.sort(() => 0.5 - Math.random()).slice(0, n);
-}
-
-function generarExamen() {
-  const contenedor = document.getElementById('quiz');
-  contenedor.innerHTML = "";
-
-  seleccionarAleatorios(BANCO_TEORIA, 2).forEach((p, i) => {
-    contenedor.innerHTML += `
-      <div class="question" id="teoria-${i}">
-        <p><strong>${i+1}. ${p.pregunta}</strong></p>
-        ${p.opciones.map((op, j) => `
-          <label><input type="radio" name="teoria-${i}" value="${j}"> ${op}</label><br>
-        `).join('')}
-        <div class="feedback" id="feedback-teoria-${i}"></div>
-      </div>
-    `;
-  });
-
-  seleccionarAleatorios(BANCO_PRACTICAS, 3).forEach((tipo, i) => {
-    const a = aleatorioSigno(2);
-    let b = aleatorioSigno(2), c = aleatorioSigno(2), d = aleatorio(-3, 3);
-    if (tipo.tipo === "Tipo 3" && a === c) c += 1;
-    const { pregunta, solucion } = tipo.generar(a, b, c, d);
-
-    contenedor.innerHTML += `
-      <div class="question" id="practica-${i}" data-solucion="${solucion}">
-        <p><strong>${i+3}. ${pregunta}</strong></p>
-        <input type="text" placeholder="Ingresa y(x)" style="width: 100%; padding: 8px;">
-        <div class="feedback" id="feedback-practica-${i}"></div>
-      </div>
-    `;
-  });
-}
-
-function evaluarRespuesta(respuesta, solucion) {
-  try {
-    let error = 0;
-    for (let x = 1; x <= 5; x++) {
-      const yAlumno = math.evaluate(respuesta, { x });
-      const yCorrecto = math.evaluate(solucion, { x });
-      error += Math.pow(yAlumno - yCorrecto, 2);
+    async function loadQuestions() {
+      // Cargar preguntas teóricas
+      const teorica = await fetch('questions/teorica.json');
+      theoryQuestions = await teorica.json();
+      
+      // Cargar plantillas prácticas
+      const practica = await fetch('questions/practica.json');
+      practicalTemplates = await practica.json();
+      
+      renderExam();
     }
-    return error / 5 < TOLERANCIA;
-  } catch {
-    return false;
-  }
-}
 
-function submitExam() {
-  let puntaje = 0;
-
-  BANCO_TEORIA.forEach((p, i) => {
-    const seleccionado = document.querySelector(`input[name="teoria-${i}"]:checked`);
-    const feedback = document.getElementById(`feedback-teoria-${i}`);
-
-    if (seleccionado && parseInt(seleccionado.value) === p.respuesta) {
-      feedback.textContent = "✅ Correcto! " + p.explicacion;
-      feedback.className = "feedback correct";
-      puntaje++;
-    } else {
-      feedback.textContent = "❌ Incorrecto. " + p.explicacion;
-      feedback.className = "feedback incorrect";
+    // ---------------------- GENERADOR DE PARÁMETROS ----------------------
+    function randParam(config) {
+      let num;
+      do {
+        num = Math.floor(Math.random() * (config.max - config.min + 1)) + config.min;
+      } while (config.nonZero && num === 0);
+      return num;
     }
-    feedback.style.display = "block";
-  });
 
-  document.querySelectorAll('[id^="practica-"]').forEach((q, i) => {
-    const respuesta = q.querySelector('input').value;
-    const solucion = q.dataset.solucion;
-    const feedback = document.getElementById(`feedback-practica-${i}`);
+    // ---------------------- RENDERIZAR EXAMEN ----------------------
+    function renderExam() {
+      const quizContainer = document.getElementById('quiz');
+      quizContainer.innerHTML = '';
 
-    if (evaluarRespuesta(respuesta, solucion)) {
-      feedback.textContent = "✅ Correcto!";
-      feedback.className = "feedback correct";
-      puntaje++;
-    } else {
-      feedback.textContent = `❌ Solución esperada: ${solucion}`;
-      feedback.className = "feedback incorrect";
+      // 1. Preguntas teóricas (aleatorizar orden de opciones)
+      theoryQuestions.forEach((q, i) => {
+        const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+        const correctIndex = shuffledOptions.indexOf(q.options[q.answer]);
+        
+        quizContainer.innerHTML += `
+          <div class="question" data-type="theory" data-answer="${correctIndex}">
+            <p>${q.question}</p>
+            ${shuffledOptions.map((opt, idx) => `
+              <label><input type="radio" name="theory-${i}" value="${idx}"> ${opt}</label><br>
+            `).join('')}
+          </div>
+        `;
+      });
+
+      // 2. Ejercicios prácticos (generados dinámicamente)
+      practicalTemplates.slice(0, 3).forEach((template, i) => {
+        const params = {};
+        Object.keys(template.params).forEach(key => {
+          params[key] = randParam(template.params[key]);
+        });
+
+        let question = template.template;
+        let solution = template.solution;
+        let steps = template.steps;
+
+        // Reemplazar placeholders ({{a}}, {{b}}, etc.)
+        Object.keys(params).forEach(key => {
+          const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+          question = question.replace(regex, params[key]);
+          solution = solution.replace(regex, params[key]);
+          steps = steps.map(step => step.replace(regex, params[key]));
+        });
+
+        quizContainer.innerHTML += `
+          <div class="question" data-type="practical" data-solution="${solution}">
+            <p>${question}</p>
+            <input type="text">
+            <div class="solution-steps hidden">${steps.join('<br>')}</div>
+          </div>
+        `;
+      });
     }
-    feedback.style.display = "block";
-  });
 
-  document.getElementById('result').innerHTML = `
-    <h3>Puntaje: ${puntaje}/5</h3>
-    ${puntaje >= 4 ? "🎉 ¡Excelente!" : "💡 Sigue practicando."}
-  `;
-}
-
-window.onload = generarExamen;
-</script>
+    // Cargar todo al iniciar
+    loadQuestions();
+  </script>
 </body>
 </html>
-
-
