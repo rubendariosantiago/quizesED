@@ -96,71 +96,24 @@
 <div id="quiz"></div>
 <button id="submit-btn">Enviar Examen</button>
 <div id="result" class="hidden"></div>
-  <script src="teorica.js"></script>
-   <script src="practica.js"></script>
+
+<script src="teorica.js"></script>
+<script src="practica.js"></script>
 <script>
   // ---------------------- CONFIGURACIÓN ----------------------
   const TOLERANCE = 1e-2;
-  let theoryQuestions = [];
-  let practicalTemplates = [];
   let examQuestions = [];
-
-  // ---------------------- CARGAR BANCOS DE PREGUNTAS ----------------------
-//async function loadQuestions() {
-//  try {
-    // Cargar preguntas teóricas (usando ruta relativa correcta)
-//    const theoryResponse = await fetch('teorica.json');
- //   if (!theoryResponse.ok) throw new Error("Error cargando teorica.json");
-//    theoryQuestions = await theoryResponse.json();
-    
-    // Cargar plantillas prácticas
-//    const practicalResponse = await fetch('practica.json');
-//    if (!practicalResponse.ok) throw new Error("Error cargando practica.json");
-//    practicalTemplates = await practicalResponse.json();
-    
-//    generateExam();
-//  } catch (error) {
-//    console.error("Error cargando preguntas:", error);
-    
-    // Mensaje más descriptivo
-//    const errorMsg = `No se pudieron cargar las preguntas. Verifica que:
-//    1. Exista la carpeta 'questions' con los archivos 'teorica.json' y 'practica.json'
-//    2. Los nombres de los archivos estén escritos exactamente así
-//    3. El servidor web esté funcionando correctamente`;
-    
-//    alert(errorMsg);
-    
-    // Cargar datos de ejemplo en caso de error
-//    loadFallbackData();
-//  }
-//}
-
-// Datos de ejemplo para desarrollo
-//function loadFallbackData() {
-//  theoryQuestions = [
-//    {
-//      question: "Ejemplo teórico: ¿Cuál es el factor integrante para y' + 2y = 0?",
-//      options: ["e^(2x)", "e^(-2x)", "2x", "x^2"],
-//      answer: 0,
-//      solution: "Solución de ejemplo: μ(x) = e^(∫2dx) = e^(2x)"
-//    }
-//  ];
-
-//  practicalTemplates = [
-//    {
-//      type: "ejemplo",
-//      template: "Resuelve: y' + 2y = 4, y(0) = 1",
-//      solution: "2 - e^(-2x)",
-//      steps: ["Paso 1: Identificar P(x) = 2", "Paso 2: Factor integrante = e^(2x)"],
-//      params: {}
-//    }
-//  ];
-
-//  generateExam();
-//  }
 
   // ---------------------- GENERAR EXAMEN ----------------------
   function generateExam() {
+    // Verificar que los datos estén cargados
+    if (typeof theoryQuestions === 'undefined' || typeof practicalTemplates === 'undefined') {
+      console.error("Error: No se cargaron las preguntas correctamente");
+      document.getElementById('quiz').innerHTML = 
+        '<div class="question"><p>Error al cargar las preguntas. Recarga la página.</p></div>';
+      return;
+    }
+
     const quizContainer = document.getElementById('quiz');
     quizContainer.innerHTML = '';
     examQuestions = [];
@@ -169,7 +122,6 @@
     const shuffledTheories = [...theoryQuestions].sort(() => Math.random() - 0.5).slice(0, 2);
     
     shuffledTheories.forEach((q, i) => {
-      // Mezclar opciones de respuesta
       const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
       const correctIndex = shuffledOptions.indexOf(q.options[q.answer]);
       
@@ -211,16 +163,18 @@
         params[key] = value;
       });
 
-      // Reemplazar placeholders en la plantilla
+      // Reemplazar placeholders
       let question = template.template;
       let solution = template.solution;
-      let steps = [...template.steps];
+      let steps = template.steps || [];
       
       Object.keys(params).forEach(key => {
         const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
         question = question.replace(regex, params[key]);
         solution = solution.replace(regex, params[key]);
-        steps = steps.map(step => step.replace(regex, params[key]));
+        if (steps) {
+          steps = steps.map(step => step.replace(regex, params[key]));
+        }
       });
 
       examQuestions.push({
@@ -240,14 +194,14 @@
       `;
     });
 
-    // Renderizar MathJax después de cargar las preguntas
+    // Renderizar MathJax
     if (window.MathJax) {
       MathJax.typesetPromise();
     }
   }
 
   // ---------------------- EVALUAR EXAMEN ----------------------
-  async function submitExam() {
+  function submitExam() {
     let score = 0;
     const results = [];
 
@@ -281,7 +235,7 @@
         } else {
           feedbackElement.innerHTML = `
             ❌ Incorrecto. La solución correcta es: <span class="mathjax">${q.solution}</span>
-            <div class="solution-steps">${q.steps.map(step => `<div>${step}</div>`).join('')}</div>
+            ${q.steps ? `<div class="solution-steps">${q.steps.map(step => `<div>${step}</div>`).join('')}</div>` : ''}
           `;
           feedbackElement.className = 'feedback incorrect';
         }
@@ -302,21 +256,26 @@
   // ---------------------- COMPARACIÓN DE RESPUESTAS PRÁCTICAS ----------------------
   function evaluateSolution(input, expected) {
     try {
+      // Simplificar ambas expresiones
       const simplifiedInput = math.simplify(input).toString();
       const simplifiedExpected = math.simplify(expected).toString();
-      return math.equal(math.simplify(`(${simplifiedInput}) - (${simplifiedExpected})`), 0);
+      
+      // Comparar las expresiones simplificadas
+      return math.equal(math.parse(simplifiedInput), math.parse(simplifiedExpected));
     } catch (e) {
       console.error("Error comparando soluciones:", e);
       return false;
     }
   }
 
-  // ---------------------- INICIO ----------------------
-  window.onload = () => {
-    // Si no usas archivos JSON externos, puedes tener los datos ya cargados desde teorica.js y practica.js
-    generateExam();
-    document.getElementById('submit-btn').addEventListener('click', submitExam);
-  };
+  // ---------------------- INICIALIZACIÓN ----------------------
+  document.addEventListener('DOMContentLoaded', () => {
+    // Esperar un breve momento para asegurar que los scripts hayan cargado
+    setTimeout(() => {
+      generateExam();
+      document.getElementById('submit-btn').addEventListener('click', submitExam);
+    }, 100);
+  });
 </script>
 </body>
 </html>
