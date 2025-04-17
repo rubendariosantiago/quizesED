@@ -7,18 +7,18 @@ const practicalTemplates = [
     steps: [
       "Identificamos que es una EDO lineal de primer orden: \\[ y' + P(x)y = Q(x) \\]",
       "Factor integrante: \\[ \\mu(x) = e^{\\int {{a}} \\, dx} = e^{{{a}}x} \\]",
-      "Multiplicamos toda la ecuación por \\( \\mu(x) \\):",
-      "\\( e^{{{a}}x}y' + {{a}}e^{{{a}}x}y = {{b}}e^{{{a}}x} \\)",
+      "Multiplicamos toda la ecuación por $ \\mu(x) $:",
+      "\\[ e^{{{a}}x}y' + {{a}}e^{{{a}}x}y = {{b}}e^{{{a}}x} \\]",
       "Reconocemos el lado izquierdo como la derivada de un producto:",
-      "\\( \\frac{d}{dx}(e^{{{a}}x}y) = {{b}}e^{{{a}}x} \\)",
+      "\\[ \\frac{d}{dx}(e^{{{a}}x}y) = {{b}}e^{{{a}}x} \\]",
       "Integramos ambos lados:",
-      "\\( e^{{{a}}x}y = \\frac{ {{b}} }{ {{a}} }e^{{{a}}x} + C \\)",
-      "Despejamos \\( y \\):",
-      "\\( y = \\frac{ {{b}} }{ {{a}} } + Ce^{-{{a}}x} \\)",
+      "\\[ e^{{{a}}x}y = \\frac{ {{b}} }{ {{a}} }e^{{{a}}x} + C \\]",
+      "Despejamos $ y $:",
+      "\\[ y = \\frac{ {{b}} }{ {{a}} } + Ce^{-{{a}}x} \\]",
       "Aplicamos condición inicial \\( y(0) = {{c}} \\):",
-      "\\( {{c}} = \\frac{ {{b}} }{ {{a}} } + C \\) ⇒ \\( C = {{c}} - \\frac{ {{b}} }{ {{a}} } \\)",
+      "\\[ {{c}} = \\frac{ {{b}} }{ {{a}} } + C \\) ⇒ \\( C = {{c}} - \\frac{ {{b}} }{ {{a}} } \\]",
       "Solución final:",
-      "\\( y(x) = \\frac{ {{b}} }{ {{a}} } + \\left( {{c}} - \\frac{ {{b}} }{ {{a}} } \\right) e^{-{{a}}x} \\)"
+      "\\[ y(x) = \\frac{ {{b}} }{ {{a}} } + \\left( {{c}} - \\frac{ {{b}} }{ {{a}} } \\right) e^{-{{a}}x} \\]"
     ],
     params: {
       a: { min: 2, max: 5, nonZero: true },
