@@ -93,6 +93,27 @@
       color: #666;
       margin-top: 5px;
     }
+    .format-help {
+      font-size: 0.8em;
+      color: #666;
+      margin-top: 5px;
+      font-style: italic;
+    }
+    .debug-toggle {
+      font-size: 0.8em;
+      color: #0066cc;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    .debug-info {
+      font-size: 0.8em;
+      color: #666;
+      margin-top: 10px;
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -100,44 +121,112 @@
 <h1>Examen de Ecuaciones Diferenciales</h1>
 <div id="quiz"></div>
 <button id="submit-btn">Enviar Examen</button>
+<button id="new-exam-btn" style="margin-left: 10px;">Nuevo Examen</button>
 <div id="result" class="hidden"></div>
 
 <script src="teorica.js"></script>
 <script src="practica.js"></script>
 <script>
-  // ---------------------- CONFIGURACIÓN ----------------------
-  const TOLERANCE = 1e-2;
+  // ===================== CONFIGURACIÓN =====================
+  const TOLERANCE = 1e-4;       // Tolerancia para el error cuadrático medio
+  const TEST_POINTS = 15;       // Número de puntos de evaluación
+  const EVAL_RANGE = [-3, 3];   // Rango de evaluación [x_min, x_max]
+  const SHOW_DEBUG = false;     // Mostrar información de diagnóstico
+
   let examQuestions = [];
   let currentParams = {};
 
-  // ---------------------- FUNCIONES AUXILIARES ----------------------
-  function evaluateMathExpression(expr, params) {
-    try {
-      // Reemplazar parámetros en la expresión
-      let exprWithValues = expr;
-      for (const [key, value] of Object.entries(params)) {
-        exprWithValues = exprWithValues.replace(new RegExp(`\\b${key}\\b`, 'g'), value);
-      }
-      
-      // Evaluar la expresión
-      return math.simplify(exprWithValues).toString();
-    } catch (e) {
-      console.error("Error evaluando expresión:", e);
-      return null;
-    }
+  // ===================== FUNCIONES AUXILIARES =====================
+  function preprocessInput(input) {
+    if (!input) return '';
+    
+    return input
+      .replace(/\s+/g, '')      // Eliminar espacios
+      .replace(/\^/g, '**')     // x^2 → x**2
+      .replace(/(\d+)e\b/g, '$1*exp')  // 3e → 3*exp
+      .replace(/e\^\((.+?)\)/g, 'exp($1)') // e^(x) → exp(x)
+      .replace(/([a-zA-Z])(\d+)/g, '$1*$2') // y2 → y*2
+      .replace(/(\d+)([a-zA-Z])/g, '$1*$2') // 2x → 2*x
+      .replace(/\)(\w|\(|\\|exp)/g, ')*$1') // )( → )*(
+      .replace(/([a-zA-Z])\(/g, '$1*(')    // x( → x*(
+      .replace(/\)([a-zA-Z])/g, ')*$1');   // )x → )*x
   }
 
   function processTemplate(template, params) {
-    // Procesar expresiones matemáticas entre {{}}
-    const processed = template.replace(/\{\{(.+?)\}\}/g, (_, expr) => {
-      return evaluateMathExpression(expr, params) || `{{${expr}}}`;
-    });
-    
-    // Procesar comandos LaTeX
-    return processed.replace(/\\\(/g, '').replace(/\\\)/g, '');
+    return template.replace(/\{\{(.+?)\}\}/g, (_, expr) => {
+      try {
+        let exprWithValues = expr;
+        for (const [key, value] of Object.entries(params)) {
+          exprWithValues = exprWithValues.replace(new RegExp(`\\b${key}\\b`, 'g'), value);
+        }
+        return math.evaluate(exprWithValues).toString();
+      } catch (e) {
+        console.error(`Error procesando expresión: {{${expr}}}`);
+        return `{{${expr}}}`;
+      }
+    }).replace(/\\\(/g, '').replace(/\\\)/g, '');
   }
 
-  // ---------------------- GENERAR EXAMEN ----------------------
+  // ===================== SISTEMA DE EVALUACIÓN MEJORADO =====================
+  function evaluateSolution(userInput, expectedSolution) {
+    if (!userInput || !expectedSolution) return false;
+    
+    const processedInput = preprocessInput(userInput);
+    let debugInfo = '';
+    
+    try {
+      const userFunc = math.compile(processedInput);
+      const expectedFunc = math.compile(expectedSolution);
+      
+      let totalError = 0;
+      let validPoints = 0;
+      let maxError = 0;
+      let maxErrorPoint = 0;
+      
+      // Evaluar en puntos aleatorios dentro del rango
+      for (let i = 0; i < TEST_POINTS; i++) {
+        const x = EVAL_RANGE[0] + Math.random() * (EVAL_RANGE[1] - EVAL_RANGE[0]);
+        
+        try {
+          const userVal = userFunc.evaluate({x});
+          const expectedVal = expectedFunc.evaluate({x});
+          
+          if (!isFinite(userVal) || !isFinite(expectedVal)) {
+            if (String(userVal) !== String(expectedVal)) return false;
+            continue;
+          }
+          
+          const error = math.pow(userVal - expectedVal, 2);
+          totalError += error;
+          validPoints++;
+          
+          if (error > maxError) {
+            maxError = error;
+            maxErrorPoint = x;
+          }
+          
+          debugInfo += `x=${x.toFixed(2)}: Usuario=${userVal.toFixed(4)}, Esperado=${expectedVal.toFixed(4)}, Error=${error.toExponential(2)}\n`;
+        } catch (e) {
+          console.error(`Error evaluando en x=${x}:`, e);
+          continue;
+        }
+      }
+      
+      if (validPoints < TEST_POINTS * 0.7) return false; // Requerir al menos 70% de puntos válidos
+      
+      const mse = totalError / validPoints;
+      debugInfo += `\nECM: ${mse.toExponential(4)} (Tolerancia: ${TOLERANCE})\n`;
+      debugInfo += `Máximo error: ${Math.sqrt(maxError).toExponential(2)} en x=${maxErrorPoint.toFixed(2)}`;
+      
+      console.log(debugInfo);
+      return mse <= TOLERANCE;
+    } catch (e) {
+      console.error("Error en evaluación:", e, "\nInput:", processedInput, "\nExpected:", expectedSolution);
+      return false;
+    }
+  }
+
+  // ===================== GENERACIÓN DEL EXAMEN =====================
   function generateExam() {
     if (typeof theoryQuestions === 'undefined' || typeof practicalTemplates === 'undefined') {
       document.getElementById('quiz').innerHTML = 
@@ -150,7 +239,7 @@
     examQuestions = [];
     currentParams = {};
 
-    // 1. Seleccionar 2 preguntas teóricas aleatorias
+    // 1. Preguntas teóricas (2 aleatorias)
     const shuffledTheories = [...theoryQuestions].sort(() => Math.random() - 0.5).slice(0, 2);
     
     shuffledTheories.forEach((q, i) => {
@@ -179,11 +268,10 @@
       `;
     });
 
-    // 2. Seleccionar 3 ejercicios prácticos aleatorios
+    // 2. Problemas prácticos (3 aleatorios)
     const shuffledPracticals = [...practicalTemplates].sort(() => Math.random() - 0.5).slice(0, 3);
     
     shuffledPracticals.forEach((template, i) => {
-      // Generar parámetros aleatorios
       const params = {};
       Object.keys(template.params).forEach(key => {
         let value;
@@ -193,12 +281,10 @@
         params[key] = value;
       });
 
-      // Procesar plantillas con los parámetros
       const question = processTemplate(template.template, params);
-      const solutionMathjs = evaluateMathExpression(template.solution_mathjs, params);
+      const solutionMathjs = processTemplate(template.solution_mathjs, params);
       const solutionLatex = processTemplate(template.solution_latex, params);
 
-      // Guardar parámetros para mostrar en feedback
       currentParams[`practical-${i}`] = params;
 
       examQuestions.push({
@@ -210,7 +296,6 @@
         steps: template.steps || []
       });
 
-      // Mostrar información de parámetros
       const paramsInfo = Object.entries(params).map(([key, value]) => 
         `${key} = ${value}`).join(', ');
 
@@ -218,19 +303,20 @@
         <div class="question" data-type="practical" data-index="${i + 2}">
           <p><strong>Ejercicio práctico ${i+1}:</strong> ${question}</p>
           <div class="param-info">Parámetros: ${paramsInfo}</div>
-          <input type="text" placeholder="Ingresa y(x) en formato matemático (ej: 3*exp(2*x) + 5)" class="answer-input">
+          <input type="text" placeholder="Ejemplo: 3*exp(2*x) + x^2 - 5/(x+1)" class="answer-input">
+          <div class="format-help">Formato aceptado: Use * para multiplicación, exp() para exponencial, ** o ^ para potencias</div>
+          ${SHOW_DEBUG ? `<div class="debug-info">Solución esperada (mathjs): ${solutionMathjs}</div>` : ''}
           <div class="feedback hidden"></div>
         </div>
       `;
     });
 
-    // Renderizar MathJax
     if (window.MathJax) {
       MathJax.typesetPromise();
     }
   }
 
-  // ---------------------- EVALUAR EXAMEN ----------------------
+  // ===================== EVALUACIÓN Y RETROALIMENTACIÓN =====================
   function submitExam() {
     let score = 0;
     const results = [];
@@ -264,13 +350,15 @@
           feedbackElement.className = 'feedback correct';
         } else {
           feedbackElement.innerHTML = `
-            ❌ Incorrecto. Tu respuesta: <span class="mathjax">${userInput || "(vacío)"}</span><br>
-            Solución esperada: <span class="mathjax">${q.solution_latex}</span>
+            ❌ Respuesta incorrecta<br><br>
+            <strong>Tu respuesta:</strong> <span class="mathjax">${userInput || "(vacío)"}</span><br>
+            <strong>Solución esperada:</strong> <span class="mathjax">${q.solution_latex}</span>
             ${q.steps.length > 0 ? `
             <div class="solution-steps">
               <strong>Pasos de solución:</strong>
               ${q.steps.map(step => `<div>${processTemplate(step, q.params)}</div>`).join('')}
             </div>` : ''}
+            ${SHOW_DEBUG ? `<div class="debug-info">Expresión evaluada: ${q.solution_mathjs}</div>` : ''}
           `;
           feedbackElement.className = 'feedback incorrect';
         }
@@ -288,36 +376,8 @@
     }
   }
 
-  // ---------------------- COMPARACIÓN DE RESPUESTAS ----------------------
-  function evaluateSolution(userInput, expectedSolution) {
-    if (!userInput) return false;
-    
-    try {
-      // Simplificar ambas expresiones
-      const userExpr = math.simplify(userInput);
-      const expectedExpr = math.simplify(expectedSolution);
-      
-      // Calcular diferencia
-      const diff = math.simplify(math.subtract(userExpr, expectedExpr));
-      
-      // Evaluar en varios puntos para mayor robustez
-      const testPoints = [0, 1, 2, -1, 0.5];
-      return testPoints.every(x => {
-        try {
-          return math.abs(diff.evaluate({x: x})) < TOLERANCE;
-        } catch {
-          return false;
-        }
-      });
-    } catch (e) {
-      console.error("Error comparando soluciones:", e);
-      return false;
-    }
-  }
-
-  // ---------------------- INICIALIZACIÓN ----------------------
+  // ===================== INICIALIZACIÓN =====================
   document.addEventListener('DOMContentLoaded', () => {
-    // Esperar a que MathJax esté listo
     if (window.MathJax) {
       MathJax.startup.promise.then(() => {
         generateExam();
@@ -327,6 +387,7 @@
     }
     
     document.getElementById('submit-btn').addEventListener('click', submitExam);
+    document.getElementById('new-exam-btn').addEventListener('click', generateExam);
   });
 </script>
 </body>
