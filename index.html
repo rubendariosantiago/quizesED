@@ -123,6 +123,11 @@
     .format-modal button {
       margin-top: 15px;
     }
+    .error-details {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 5px;
+    }
   </style>
 </head>
 <body>
@@ -160,8 +165,8 @@
 <script src="practica.js"></script>
 <script>
   // ===================== CONFIGURACIÓN =====================
-  const TOLERANCE = 1e-6;
-  const TEST_POINTS = 15;
+  const TOLERANCE = 1e-6; // Tolerancia para el ECM
+  const TEST_POINTS = [0.1, 0.5, 1, 1.5, 2, Math.PI/4, Math.PI/2, Math.E]; // Puntos de evaluación
   let examQuestions = [];
   let currentParams = {};
 
@@ -170,19 +175,17 @@
     if (!input) return '';
     
     return input
-      .replace(/\s+/g, '')
-      .replace(/\^/g, '**')
-      .replace(/e\^\((.+?)\)/g, 'exp($1)')
-      .replace(/(\d+)e\b/g, '$1*exp(1)')
-      .replace(/ln\(/g, 'log(')
-      .replace(/(\d)([a-zA-Z])/g, '$1*$2')
-      .replace(/([a-zA-Z])(\d)/g, '$1*$2')
-      .replace(/([a-zA-Z])(\()/g, '$1*$2')
-      .replace(/(\))([a-zA-Z])/g, '$1*$2')
-      .replace(/(\))(\()/g, '$1*$2')
-      .replace(/([\+\-\*\/])([\+\-])/g, '$1 $2')
-      .replace(/(\d)\(/g, '$1*(')
-      .replace(/\)(\d)/g, ')*$1');
+      .replace(/\s+/g, '') // Eliminar espacios
+      .replace(/\^/g, '**') // Convertir ^ a **
+      .replace(/(\d)([a-zA-Z\(])/g, '$1*$2') // 2x -> 2*x
+      .replace(/([a-zA-Z\)])(\d)/g, '$1*$2') // x2 -> x*2
+      .replace(/([a-zA-Z\)])([a-zA-Z\(])/g, '$1*$2') // xy -> x*y
+      .replace(/e\^\((.+?)\)/g, 'exp($1)') // e^(x) -> exp(x)
+      .replace(/(\d+)e\b/g, '$1*exp(1)') // 2e -> 2*exp(1)
+      .replace(/ln\(/g, 'log(') // ln -> log
+      .replace(/([+\-*/])([+-])/g, '$1 $2') // Separar operadores
+      .replace(/(\d)\(/g, '$1*(') // 2(x+1) -> 2*(x+1)
+      .replace(/\)(\d)/g, ')*$1'); // (x+1)2 -> (x+1)*2
   }
 
   function processTemplate(template, params) {
@@ -200,59 +203,62 @@
     }).replace(/\\\(/g, '').replace(/\\\)/g, '');
   }
 
-  // ===================== EVALUACIÓN MEJORADA =====================
+  // ===================== EVALUACIÓN CON ERROR CUADRÁTICO MEDIO =====================
   function evaluateSolution(userInput, expectedSolution, params = {}) {
-    if (!userInput || !expectedSolution) return false;
+    if (!userInput || !expectedSolution) {
+      return { isValid: false, error: "Expresión vacía", ecm: Infinity };
+    }
     
     try {
+      // Preprocesamiento
       const processedInput = preprocessInput(userInput);
-      let userExpr = processedInput;
-      let expectedExpr = expectedSolution;
+      const processedExpected = preprocessInput(expectedSolution);
       
-      // Sustitución segura de parámetros
-      for (const [key, value] of Object.entries(params)) {
-        const regex = new RegExp(`(^|\\W)${key}($|\\W)`, 'g');
-        userExpr = userExpr.replace(regex, `$1${value}$2`);
-        expectedExpr = expectedExpr.replace(regex, `$1${value}$2`);
-      }
-
-      const userFunc = math.compile(userExpr);
-      const expectedFunc = math.compile(expectedExpr);
+      // Compilar funciones
+      const userFunc = math.compile(processedInput);
+      const expectedFunc = math.compile(processedExpected);
       
-      // Puntos de evaluación estratégicos
-      const testPoints = [-2.5, -2, -1.3, -0.7, -0.1, 0.1, 0.5, 1, 1.5, 2, 2.8, Math.PI/6, Math.PI/4, Math.PI/2, Math.E];
+      // Preparar scope con parámetros
+      const scope = { ...params };
       
-      let totalError = 0;
+      // Calcular ECM en varios puntos
+      let sumSquaredErrors = 0;
       let validPoints = 0;
-      let maxError = 0;
       
-      for (const x of testPoints) {
+      for (const x of TEST_POINTS) {
         try {
-          const userVal = userFunc.evaluate({x});
-          const expectedVal = expectedFunc.evaluate({x});
+          scope.x = x;
           
-          if (!isFinite(userVal)) return false;
+          const userVal = userFunc.evaluate(scope);
+          const expectedVal = expectedFunc.evaluate(scope);
+          
+          // Evitar puntos donde la solución esperada es muy grande
           if (Math.abs(expectedVal) > 1e12) continue;
           
-          // Error relativo suavizado
-          const error = math.abs(userVal - expectedVal) / (1 + math.abs(expectedVal));
-          totalError += error;
-          maxError = math.max(maxError, error);
+          // Calcular error relativo
+          const error = (userVal - expectedVal) / (1 + Math.abs(expectedVal));
+          sumSquaredErrors += error * error;
           validPoints++;
-          
         } catch (e) {
           console.warn(`Error evaluando en x=${x}:`, e);
           continue;
         }
       }
       
-      if (validPoints < TEST_POINTS * 0.6) return false;
+      // Calcular ECM
+      const ecm = Math.sqrt(sumSquaredErrors / validPoints);
       
-      const avgError = totalError / validPoints;
-      return avgError < TOLERANCE && maxError < TOLERANCE * 10;
+      return {
+        isValid: ecm < TOLERANCE,
+        ecm: ecm,
+        error: ecm >= TOLERANCE ? `ECM demasiado alto (${ecm.toExponential(2)})` : null
+      };
     } catch (e) {
-      console.error("Error en evaluación:", e);
-      return false;
+      return {
+        isValid: false,
+        error: `Error en la expresión: ${e.message}`,
+        ecm: Infinity
+      };
     }
   }
 
@@ -371,9 +377,9 @@
         }
       } else {
         const userInput = questionElement.querySelector('input').value.trim();
-        const isCorrect = evaluateSolution(userInput, q.solution_mathjs, q.params);
+        const evaluation = evaluateSolution(userInput, q.solution_mathjs, q.params);
         
-        if (isCorrect) {
+        if (evaluation.isValid) {
           score++;
           feedbackElement.innerHTML = '✅ Correcto!';
           feedbackElement.className = 'feedback correct';
@@ -381,7 +387,9 @@
           feedbackElement.innerHTML = `
             ❌ Respuesta incorrecta<br><br>
             <strong>Tu respuesta:</strong> <code>${userInput || "(vacío)"}</code><br>
+            <strong>Error:</strong> ${evaluation.error}<br>
             <strong>Solución esperada:</strong> <span class="mathjax">${q.solution_latex}</span>
+            <div class="error-details">Error cuadrático medio: ${evaluation.ecm.toExponential(2)}</div>
             ${q.steps.length > 0 ? `
             <div class="solution-steps">
               <strong>Pasos de solución:</strong>
