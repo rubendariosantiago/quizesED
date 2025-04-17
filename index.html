@@ -127,6 +127,10 @@
       margin-top: 5px;
       display: none;
     }
+    .trig-points {
+      color: #2c3e50;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -165,8 +169,9 @@
 <script src="practica.js"></script>
 <script>
   // ===================== CONFIGURACIÓN =====================
-  const TOLERANCE = 1e-8;
-  const TEST_POINTS = Array.from({length: 20}, (_, i) => -3 + i*0.3); // Puntos de -3 a 3
+  const TOLERANCE = 1e-6;
+  const REGULAR_POINTS = Array.from({length: 15}, (_, i) => -2 + i*0.25); // Puntos en [-2, 2]
+  const TRIG_POINTS = [0, Math.PI/6, Math.PI/4, Math.PI/3, Math.PI/2, 2*Math.PI/3, 3*Math.PI/4, Math.PI, 5*Math.PI/4, 3*Math.PI/2, 7*Math.PI/4];
   let examQuestions = [];
   let currentParams = {};
   let debugMode = false;
@@ -187,51 +192,65 @@
       .replace(/([+\-*/])([+-])/g, '$1 $2')
       .replace(/(\d)\(/g, '$1*(')
       .replace(/\)(\d)/g, ')*$1')
-      .replace(/\/\/.+$/g, ''); // Eliminar comentarios
+      .replace(/(sin|cos|tan)\^2\((.+?)\)/g, '(($1($2))^2)') // Manejar sin^2(x)
+      .replace(/(sin|cos|tan)\^\((.+?)\)/g, '(($1($2))^$3)') // Manejar sin^(n)(x)
+      .replace(/\/\/.+$/g, '');
   }
 
-  function symbolicComparison(userExpr, expectedExpr) {
+  function containsTrig(expr) {
+    return /(sin|cos|tan)\(/.test(expr);
+  }
+
+  function safeEvaluate(expr, scope) {
     try {
-      const diff = math.simplify(`(${userExpr}) - (${expectedExpr})`);
-      return math.isZero(diff.evaluate());
+      const node = math.parse(expr);
+      const compiled = node.compile();
+      return compiled.evaluate(scope);
     } catch (e) {
-      return false;
+      throw new Error(`Error evaluando expresión: ${e.message}`);
     }
   }
 
-  function numericalComparison(userExpr, expectedExpr, params) {
+  function compareExpressions(userExpr, expectedExpr, params) {
     const scope = {...params};
     let maxError = 0;
     let validPoints = 0;
     
-    for (const x of TEST_POINTS) {
+    // Seleccionar puntos de prueba apropiados
+    const testPoints = containsTrig(expectedExpr) 
+      ? [...REGULAR_POINTS, ...TRIG_POINTS] 
+      : REGULAR_POINTS;
+    
+    for (const x of testPoints) {
       try {
         scope.x = x;
-        const userNode = math.parse(userExpr);
-        const expectedNode = math.parse(expectedExpr);
         
-        const userVal = userNode.compile().evaluate(scope);
-        const expectedVal = expectedNode.compile().evaluate(scope);
+        const userVal = safeEvaluate(userExpr, scope);
+        const expectedVal = safeEvaluate(expectedExpr, scope);
         
+        // Manejar casos especiales
         if (!isFinite(userVal)) return { isValid: false, error: "Resultado no finito" };
-        if (Math.abs(expectedVal) > 1e15) continue;
+        if (Math.abs(expectedVal) > 1e12) continue;
         
+        // Error relativo suavizado
         const error = Math.abs(userVal - expectedVal) / (1 + Math.abs(expectedVal));
         maxError = Math.max(maxError, error);
         validPoints++;
       } catch (e) {
+        console.warn(`Error en x=${x}:`, e);
         continue;
       }
     }
     
-    if (validPoints < TEST_POINTS.length * 0.7) {
+    if (validPoints < testPoints.length * 0.6) {
       return { isValid: false, error: "No se pudo evaluar en suficientes puntos" };
     }
     
     return {
       isValid: maxError < TOLERANCE,
       error: `Error máximo: ${maxError.toExponential(2)}`,
-      maxError: maxError
+      maxError: maxError,
+      testPointsUsed: validPoints
     };
   }
 
@@ -249,13 +268,8 @@
         return { isValid: false, error: `Error de sintaxis: ${e.message}` };
       }
       
-      // Comparación simbólica
-      if (symbolicComparison(processedInput, processedExpected)) {
-        return { isValid: true, error: null, maxError: 0 };
-      }
-      
-      // Comparación numérica
-      return numericalComparison(processedInput, processedExpected, params);
+      // Comparación numérica robusta
+      return compareExpressions(processedInput, processedExpected, params);
     } catch (e) {
       return { isValid: false, error: `Error: ${e.message}` };
     }
@@ -334,7 +348,8 @@
         solution_mathjs: solutionMathjs,
         solution_latex: solutionLatex,
         params: params,
-        steps: template.steps || []
+        steps: template.steps || [],
+        isTrigonometric: containsTrig(solutionMathjs)
       });
 
       const paramsInfo = Object.entries(params).map(([key, value]) => 
@@ -346,6 +361,7 @@
           <div class="param-info">Parámetros: ${paramsInfo}</div>
           <input type="text" placeholder="Ejemplo: 3*exp(2*x) + x^2 - 5/(x+1)" class="answer-input">
           <div class="format-help">Usa * para multiplicación (ej: 2*x). Potencias: x^2 o x**2</div>
+          ${containsTrig(solutionMathjs) ? '<div class="trig-points">[Este problema usa puntos trigonométricos especiales para evaluación]</div>' : ''}
           <div class="feedback hidden"></div>
           <div class="debug-info hidden"></div>
         </div>
@@ -391,7 +407,9 @@
             <strong>Depuración:</strong><br>
             <strong>Tu respuesta procesada:</strong> ${preprocessInput(userInput)}<br>
             <strong>Solución esperada:</strong> ${preprocessInput(q.solution_mathjs)}<br>
-            <strong>Comparación simbólica:</strong> ${symbolicComparison(preprocessInput(userInput), preprocessInput(q.solution_mathjs)) ? '✅' : '❌'}<br>
+            <strong>Tipo:</strong> ${q.isTrigonometric ? 'Trigonométrica' : 'Regular'}<br>
+            <strong>Error máximo:</strong> ${evaluation.maxError?.toExponential(2) || 'N/A'}<br>
+            <strong>Puntos evaluados:</strong> ${evaluation.testPointsUsed || 'N/A'}<br>
             ${evaluation.error || ''}
           `;
           debugElement.style.display = 'block';
@@ -454,7 +472,6 @@
         el.style.display = debugMode ? 'block' : 'none';
       });
       this.textContent = debugMode ? 'Ocultar Depuración' : 'Modo Depuración';
-      alert(`Modo depuración ${debugMode ? 'activado' : 'desactivado'}`);
     });
   });
 </script>
