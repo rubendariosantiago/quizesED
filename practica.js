@@ -16,7 +16,7 @@ const practicalTemplates = [
       "Al despejar la variable \\\( y \\\) se tiene:",
       "\\[ y = \\frac{ {{b}} }{ {{a}} } + Ce^{-{{a}}x} \\]",
       "Al aplicar la condición inicial \\\( y(0) = {{c}} \\\) se obtiene:",
-      "\\[ {{c}} = \\frac{ {{b}} }{ {{a}} } + C \longrightarrow  C = {{c}} - \\frac{ {{b}} }{ {{a}} }=\\frac{ {{a*c-b}} }{ {{a}} }={{c - b/ a}} \\]",
+      "\\[ {{c}} = \\frac{ {{b}} }{ {{a}} } + C \\longrightarrow  C = {{c}} - \\frac{ {{b}} }{ {{a}} }=\\frac{ {{a*c-b}} }{ {{a}} }={{c - b/ a}} \\]",
       "Finalmente, la solución de la ecuación diferencial es:",
       "\\[ y(x) = \\frac{ {{b}} }{ {{a}} } + \\left( \\frac{ {{a*c-b}} }{ {{a}} } \\right) e^{-{{a}}x}= {{b/a}}+{{c-b/a}} e^{-{{a}} x} \\]"
     ],
@@ -41,13 +41,13 @@ const practicalTemplates = [
       "Sustituyendo en la ecuación diferencial se tiene:",
       "\\[ (-{{c}}A\\sin({{c}}x) + {{c}}B\\cos({{c}}x)) + {{a}}(A\\cos({{c}}x) + B\\sin({{c}}x)) = {{b}}\\cos({{c}}x) \\]",
       "Al agrupar términos se obtiene:",
-      "\\( (-{{c}}A + {{a}}B)\\sin({{c}}x) + ({{c}}B + {{a}}A)\\cos({{c}}x) = {{b}}\\cos({{c}}x) \\)",
+      "\\[ (-{{c}}A + {{a}}B)\\sin({{c}}x) + ({{c}}B + {{a}}A)\\cos({{c}}x) = {{b}}\\cos({{c}}x) \\]",
       "De aquí, obtenemos el sistema de ecuaciones:",
       "\\[ {{a}}A + {{c}}B = {{b}} \\\\ ",
       " -{{c}}A + {{a}}B = 0 \\]",
-      "Al resolver el sistema resulta: \\( A = \\frac{ {{a}}{{b}} }{ {{a}}^2 + {{c}}^2 } \\), \\( B = \\frac{ {{c}}{{b}} }{ {{a}}^2 + {{c}}^2 } \\)",
-      "Finalmente, la solución general está dada por: \\[ y = y_h + y_p \\]",
-      "Finalmente, se aplica la condición inicial \\( y(0) = {{d}} \\) para hallar \\( C \\)"
+      "Al resolver el sistema resulta: \\[ A = \\frac{ {{a}}{{b}} }{ {{a}}^2 + {{c}}^2 } \\\\ B = \\frac{ {{c}}{{b}} }{ {{a}}^2 + {{c}}^2 } \\]",
+      "La solución general está dada por: \\[ y = y_h + y_p \\]",
+      "Finalmente, al aplicar la condición inicial \\( y(0) = {{d}} \\) se encuentra  \\( C \\)"
     ],
     params: {
       a: { min: 2, max: 5 },
