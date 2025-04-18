@@ -118,13 +118,13 @@
       color: #666;
       margin-top: 5px;
     }
-    .diagnostic-info {
+    .debug-info {
       font-size: 0.8em;
-      color: #d32f2f;
-      margin-top: 10px;
+      color: #888;
+      background: #f5f5f5;
       padding: 5px;
-      background: #ffebee;
-      border-radius: 4px;
+      border-radius: 3px;
+      margin-top: 5px;
     }
   </style>
 </head>
@@ -141,17 +141,17 @@
   <h3>Formato Requerido</h3>
   <p><strong>Ejemplos válidos:</strong></p>
   <ul>
-    <li><code>2*cos(3*x) + exp(-2*x)</code></li>
-    <li><code>(3*cos(2*x) + 4*sin(2*x))/5 + 2*exp(-3*x)</code></li>
-    <li><code>5 + (x-1)*log(x+1)</code></li>
+    <li><code>(2*cos(3*x) + sin(3*x))/5 + 3*exp(-2*x)</code></li>
+    <li><code>(x^2 + 1)/(x - 1) + exp(-x)</code></li>
+    <li><code>3*sin(2*x) - 4*cos(x/2)</code></li>
   </ul>
-  <p><strong>Requisitos:</strong></p>
+  <p><strong>Reglas estrictas:</strong></p>
   <ul>
-    <li>Usa siempre <code>*</code> para multiplicación</li>
-    <li>Funciones deben llevar paréntesis: <code>cos(x)</code> no <code>cos x</code></li>
+    <li>Usa <code>*</code> para multiplicación (2*x)</li>
+    <li>Usa paréntesis para agrupar: <code>(a+b)/(c+d)</code></li>
+    <li>Funciones: <code>cos(x)</code>, <code>sin(x)</code>, <code>exp(x)</code></li>
     <li>No uses espacios</li>
-    <li>Usa <code>exp(x)</code> para exponenciales</li>
-    <li>Usa <code>^</code> o <code>**</code> para potencias</li>
+    <li>Para fracciones: <code>(numerador)/(denominador)</code></li>
   </ul>
   <button onclick="document.getElementById('format-help-modal').style.display='none'">Cerrar</button>
 </div>
@@ -160,28 +160,32 @@
 <script src="practica.js"></script>
 <script>
   // ===================== CONFIGURACIÓN =====================
-  const TOLERANCE = 1e-6;
-  const TEST_POINTS = Array.from({length: 15}, (_, i) => 0.5 + i*0.15);
+  const TOLERANCE = 1e-5;
+  const BASE_POINTS = Array.from({length: 11}, (_, i) => i/10); // 0, 0.1, ..., 1
+  const TRIG_POINTS = [0, Math.PI/6, Math.PI/4, Math.PI/3, Math.PI/2, Math.PI];
+  const TEST_POINTS = [...new Set([...BASE_POINTS, ...TRIG_POINTS])]; 
+  
   let examQuestions = [];
   let currentParams = {};
 
-  // ===================== EVALUADOR MEJORADO =====================
-  function safeEvaluate(expr, scope) {
+  // ===================== EVALUADOR UNIVERSAL =====================
+  function evaluateExpression(expr, scope) {
     try {
-      // Preprocesamiento para manejar casos especiales
-      const processedExpr = expr
+      // Preprocesamiento mínimo pero robusto
+      const processed = expr
         .replace(/\s+/g, '') // Eliminar espacios
         .replace(/\^/g, '**') // Convertir ^ a **
-        .replace(/(\d)\.(\D)/g, '$1$2') // 3.x → 3x
-        .replace(/([a-zA-Z])\.(\d)/g, '$1$2') // x.3 → x3
-        .replace(/(\d)\.([+-])/g, '$1$2') // 3.+x → 3+x
-        .replace(/([a-zA-Z])\.([+-])/g, '$1$2'); // x.+3 → x+3
+        .replace(/([0-9])([a-zA-Z])/g, '$1*$2') // 2x → 2*x
+        .replace(/([a-zA-Z])([0-9])/g, '$1*$2') // x2 → x*2
+        .replace(/e\*\*\(/g, 'exp(') // e**(x) → exp(x)
+        .replace(/([+\-*/^])([+-])/g, '$1 $2'); // Manejar signos dobles
 
-      // Crear función de evaluación
+      // Crear función de evaluación segura
       const evalFn = new Function(...Object.keys(scope), 
-        `'use strict'; try { return ${processedExpr}; } catch(e) { return NaN; }`);
+        `'use strict'; try { return ${processed}; } catch(e) { return NaN; }`);
       
-      return evalFn(...Object.values(scope));
+      const result = evalFn(...Object.values(scope));
+      return typeof result === 'number' ? result : NaN;
     } catch (e) {
       return NaN;
     }
@@ -205,14 +209,13 @@
         try {
           scope.x = x;
           
-          const userVal = safeEvaluate(userInput, scope);
-          const expectedVal = safeEvaluate(expectedSolution, scope);
+          const userVal = evaluateExpression(userInput, scope);
+          const expectedVal = evaluateExpression(expectedSolution, scope);
 
-          if (isNaN(userVal)) {
-            throw new Error("Resultado no numérico");
-          }
-          if (Math.abs(expectedVal) > 1e12) continue;
+          if (isNaN(userVal) || !isFinite(userVal)) continue;
+          if (isNaN(expectedVal) || Math.abs(expectedVal) > 1e12) continue;
 
+          // Error relativo suavizado
           const error = Math.abs(userVal - expectedVal) / (1 + Math.abs(expectedVal));
           maxError = Math.max(maxError, error);
           validPoints++;
@@ -224,22 +227,23 @@
       if (validPoints < TEST_POINTS.length * 0.6) {
         return { 
           isValid: false, 
-          error: `Error al evaluar. Verifica:
-            - Usa puntos decimales sin espacios (0.24 no 0. 24)
-            - Usa * para multiplicación (-2.24*e no -2.24e)
-            - La expresión está completa` 
+          error: `No se pudo evaluar en suficientes puntos (${validPoints}/${TEST_POINTS.length}). Verifica:
+            1. Paréntesis balanceados
+            2. Operadores de multiplicación (*)
+            3. Funciones bien escritas (cos(x), no cosx)`
         };
       }
 
       return {
         isValid: maxError < TOLERANCE,
         error: maxError < TOLERANCE ? null : `Error relativo máximo: ${maxError.toExponential(2)}`,
-        maxError: maxError
+        maxError: maxError,
+        pointsTested: validPoints
       };
     } catch (e) {
       return {
         isValid: false,
-        error: `Error en la expresión: ${e.message}`
+        error: `Error crítico: ${e.message}`
       };
     }
   }
@@ -270,9 +274,9 @@
         <div class="question" data-type="theory" data-index="${i}">
           <p><strong>Pregunta teórica ${i+1}:</strong> ${q.question}</p>
           ${shuffledOptions.map((opt, idx) => `
-            <label><p>
+            <label>
               <input type="radio" name="theory-${i}" value="${idx}">
-              ${opt}</p>
+              ${opt}
             </label>
           `).join('')}
           <div class="feedback hidden"></div>
@@ -327,8 +331,8 @@
         <div class="question" data-type="practical" data-index="${i + 2}">
           <p><strong>Ejercicio práctico ${i+1}:</strong> ${question}</p>
           <div class="param-info">Parámetros: ${paramsInfo}</div>
-          <input type="text" placeholder="Ejemplo: 2*cos(3*x) + exp(-2*x)" class="answer-input">
-          <div class="format-help">Usa funciones como cos(), sin(), exp() sin espacios</div>
+          <input type="text" placeholder="Ejemplo: (2*cos(3*x)+3*sin(3*x))/13 + 5*exp(-2*x)" class="answer-input">
+          <div class="format-help">Formato estricto: sin espacios, con * para multiplicación</div>
           <div class="feedback hidden"></div>
         </div>
       `;
@@ -372,19 +376,11 @@
           feedbackElement.innerHTML = '✅ Correcto!';
           feedbackElement.className = 'feedback correct';
         } else {
-          let errorDetails = evaluation.error;
-          
-          // Sugerencias específicas para problemas comunes
-          if (userInput.includes('cos(') && !userInput.includes('exp(')) {
-            errorDetails += "<br><br>¿Olvidaste incluir el término exponencial en tu solución?";
-          } else if (userInput.includes('x') && !userInput.includes('*')) {
-            errorDetails += "<br><br>¿Faltan operadores de multiplicación (*) antes de la x?";
-          }
-          
           feedbackElement.innerHTML = `
             ❌ Respuesta incorrecta<br><br>
             <strong>Tu respuesta:</strong> <code>${userInput || "(vacío)"}</code><br>
-            <strong>Error:</strong> ${errorDetails}<br>
+            <strong>Error:</strong> ${evaluation.error}<br>
+            <strong>Puntos evaluados:</strong> ${evaluation.pointsTested}/${TEST_POINTS.length}<br>
             <strong>Solución esperada:</strong> <span class="mathjax">${q.solution_latex}</span>
             ${q.steps.length > 0 ? `
             <div class="solution-steps">
