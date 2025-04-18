@@ -158,92 +158,130 @@
 
 <script src="teorica.js"></script>
 <script src="practica.js"></script>
-<script>
+<script>  
   // ===================== CONFIGURACIÓN =====================
   const TOLERANCE = 1e-5;
-  const BASE_POINTS = Array.from({length: 11}, (_, i) => i/10); // 0, 0.1, ..., 1
-  const TRIG_POINTS = [0, Math.PI/6, Math.PI/4, Math.PI/3, Math.PI/2, Math.PI];
-  const TEST_POINTS = [...new Set([...BASE_POINTS, ...TRIG_POINTS])]; 
-  
+  const TEST_POINTS = [
+    0, 0.1, 0.2, 0.5, 0.8, 1, 
+    Math.PI/6, Math.PI/4, Math.PI/3, Math.PI/2, Math.PI
+  ]; // Puntos clave para todos los casos
+
   let examQuestions = [];
   let currentParams = {};
 
-  // ===================== EVALUADOR UNIVERSAL =====================
-  function evaluateExpression(expr, scope) {
-    try {
-      // Preprocesamiento mínimo pero robusto
-      const processed = expr
-        .replace(/\s+/g, '') // Eliminar espacios
-        .replace(/\^/g, '**') // Convertir ^ a **
-        .replace(/([0-9])([a-zA-Z])/g, '$1*$2') // 2x → 2*x
-        .replace(/([a-zA-Z])([0-9])/g, '$1*$2') // x2 → x*2
-        .replace(/e\*\*\(/g, 'exp(') // e**(x) → exp(x)
-        .replace(/([+\-*/^])([+-])/g, '$1 $2'); // Manejar signos dobles
+  // ===================== PARSER MEJORADO =====================
+  function parseExpression(expr) {
+    // Validación básica
+    if (!expr || typeof expr !== 'string') {
+      throw new Error("Expresión vacía o no válida");
+    }
 
-      // Crear función de evaluación segura
+    // Verificar paréntesis balanceados
+    const stack = [];
+    for (const char of expr) {
+      if (char === '(') stack.push(char);
+      if (char === ')') {
+        if (stack.length === 0) throw new Error("Paréntesis no balanceados");
+        stack.pop();
+      }
+    }
+    if (stack.length > 0) throw new Error("Paréntesis no balanceados");
+
+    // Verificar funciones mal escritas
+    const funcRegex = /(cos|sin|exp|log)\(/g;
+    const malFunc = expr.match(/(cos|sin|exp|log)[^\(]/g);
+    if (malFunc) {
+      throw new Error(`Funciones mal escritas: ${malFunc.join(', ')}. Debe ser cos(...)`);
+    }
+
+    // Preprocesamiento inteligente
+    return expr
+      .replace(/\s+/g, '')
+      .replace(/\^/g, '**')
+      .replace(/([0-9])([a-zA-Z])/g, '$1*$2')
+      .replace(/([a-zA-Z])([0-9])/g, '$1*$2')
+      .replace(/e\*\*\(/g, 'exp(')
+      .replace(/([+\-*/])([+-])/g, '$1 $2');
+  }
+
+  // ===================== EVALUADOR CON DIAGNÓSTICO =====================
+  function evaluateWithDiagnostic(expr, scope) {
+    try {
+      const parsedExpr = parseExpression(expr);
       const evalFn = new Function(...Object.keys(scope), 
-        `'use strict'; try { return ${processed}; } catch(e) { return NaN; }`);
+        `'use strict'; try { return ${parsedExpr}; } catch(e) { return NaN; }`);
       
       const result = evalFn(...Object.values(scope));
-      return typeof result === 'number' ? result : NaN;
+      
+      if (typeof result !== 'number' || isNaN(result)) {
+        throw new Error("La expresión no produjo un número válido");
+      }
+      return result;
     } catch (e) {
-      return NaN;
+      console.error(`Error al evaluar "${expr}":`, e);
+      throw new Error(`Error de evaluación: ${e.message}`);
     }
   }
 
   // ===================== EVALUACIÓN DE SOLUCIÓN =====================
   function evaluateSolution(userInput, expectedSolution, params = {}) {
-    if (!userInput || userInput.trim().length < 3) {
-      return { 
-        isValid: false, 
-        error: "La expresión es demasiado corta o vacía" 
-      };
-    }
-
     try {
+      // Validación inicial
+      if (!userInput || userInput.trim().length < 3) {
+        throw new Error("La expresión es demasiado corta");
+      }
+
+      const scope = {...params};
       let maxError = 0;
       let validPoints = 0;
-      const scope = {...params};
+      const errors = [];
 
       for (const x of TEST_POINTS) {
         try {
           scope.x = x;
           
-          const userVal = evaluateExpression(userInput, scope);
-          const expectedVal = evaluateExpression(expectedSolution, scope);
+          const userVal = evaluateWithDiagnostic(userInput, scope);
+          const expectedVal = evaluateWithDiagnostic(expectedSolution, scope);
 
-          if (isNaN(userVal) || !isFinite(userVal)) continue;
-          if (isNaN(expectedVal) || Math.abs(expectedVal) > 1e12) continue;
+          if (Math.abs(expectedVal) > 1e12) continue;
 
-          // Error relativo suavizado
           const error = Math.abs(userVal - expectedVal) / (1 + Math.abs(expectedVal));
           maxError = Math.max(maxError, error);
           validPoints++;
         } catch (e) {
+          errors.push(`En x=${x}: ${e.message}`);
           continue;
         }
       }
 
+      // Análisis de resultados
+      if (validPoints === 0) {
+        const errorAnalysis = [
+          "No se pudo evaluar en ningún punto. Posibles causas:",
+          ...new Set(errors),
+          "Ejemplo de formato válido: (2*cos(3*x)+4*sin(3*x))/5 + exp(-2*x)"
+        ].join('<br>• ');
+        throw new Error(errorAnalysis);
+      }
+
       if (validPoints < TEST_POINTS.length * 0.6) {
-        return { 
-          isValid: false, 
-          error: `No se pudo evaluar en suficientes puntos (${validPoints}/${TEST_POINTS.length}). Verifica:
-            1. Paréntesis balanceados
-            2. Operadores de multiplicación (*)
-            3. Funciones bien escritas (cos(x), no cosx)`
-        };
+        throw new Error(`Solo se evaluó en ${validPoints}/${TEST_POINTS.length} puntos. Revise:` +
+          `<br>1. Operadores de multiplicación (2*x no 2x)` +
+          `<br>2. Funciones bien escritas (cos(x) no cosx)` +
+          `<br>3. Paréntesis balanceados`);
       }
 
       return {
         isValid: maxError < TOLERANCE,
-        error: maxError < TOLERANCE ? null : `Error relativo máximo: ${maxError.toExponential(2)}`,
+        error: maxError < TOLERANCE ? null : `Error máximo: ${maxError.toExponential(2)}`,
         maxError: maxError,
         pointsTested: validPoints
       };
     } catch (e) {
       return {
         isValid: false,
-        error: `Error crítico: ${e.message}`
+        error: e.message,
+        pointsTested: 0
       };
     }
   }
