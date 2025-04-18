@@ -1,8 +1,8 @@
 const practicalTemplates = [
   {
     type: "lineal_constante",
-    template: "Resuelve: \\( y' + {{a}}y = {{b}} \\) con \\( y(0) = {{c}} \\)",
-    solution_mathjs: "({{b}}/{{a}}) + ({{c}} - ({{b}}/{{a}}))*exp(-{{a}}*x)",
+    template: "Resuelve: \\[ y' + {{a}}y = {{b}} \\] con \\( y(0) = {{c}} \\)",
+    solution_mathjs: "({{b}}/{{a}})+({{c}}-({{b}}/{{a}}))*exp(-{{a}}*x)",
     solution_latex: "$$\\frac{ {{b}} }{ {{a}} } + \\left( {{c}} - \\frac{ {{b}} }{ {{a}} } \\right) e^{-{{a}}x}$$",
     steps: [
       "Primero identificamos que es una ecuación diferencial lineal de primer orden: \\[ y' + P(x)y = Q(x) \\]",
@@ -29,8 +29,8 @@ const practicalTemplates = [
   },
   {
     type: "trigonometrica_coseno",
-    template: "Resuelve: $$ y' + {{a}}y = {{b}} \\cos({{c}}x) $$ con \\( y(0) = {{d}} \\)",
-    solution_mathjs: "({{a}}*{{b}}*cos({{c}}*x)+{{b}}*{{c}}*sin({{c}}*x))/({{a*a}}+{{c*c}}) + ({{d}}-({{a}}*{{b}})/({{a*a}}+{{c*c}}))*exp(-{{a}}*x)",
+    template: "Resuelve v: $$ y' + {{a}}y = {{b}} \\cos({{c}}x) $$ con \\( y(0) = {{d}} \\)",
+    solution_mathjs: "({{a}}*{{b}}*cos({{c}}*x)+{{b}}*{{c}}*sin({{c}}*x))/({{a*a}}+{{c*c}})+({{d}}-({{a}}*{{b}})/({{a*a}}+{{c*c}}))*exp(-{{a}}*x)",
     solution_latex: "$$\\frac{ {{a}}{{b}} \\cos({{c}}x) + {{b}}{{c}} \\sin({{c}}x) }{ {{a}}^2 + {{c}}^2 } + \\left( {{d}} - \\frac{ {{a}}{{b}} }{ {{a}}^2 + {{c}}^2 } \\right) e^{-{{a}}x}$$",
     steps: [
       "Primmero se identifica la ecuación diferencial lineal de primer orden: \\[ y' + {{a}}y = {{b}}\\cos({{c}}x) \\]",
@@ -38,13 +38,9 @@ const practicalTemplates = [
       "Para continuar, se propone una solución particular por coeficientes indeterminados:",
       "En este caso se propone: $$ y_p = A\\cos({{c}}x) + B\\sin({{c}}x) $$",
       "Al calcular la derivada se tiene $$ y_p' = -{{c}}A\\sin({{c}}x) + {{c}}B\\cos({{c}}x) $$",
-      "Sustituyendo en la ecuación diferencial se tiene:",
-      "\\[ (-{{c}}A\\sin({{c}}x) + {{c}}B\\cos({{c}}x)) + {{a}}(A\\cos({{c}}x) + B\\sin({{c}}x)) = {{b}}\\cos({{c}}x) \\]",
-      "Al agrupar términos se obtiene:",
-      "\\[ (-{{c}}A + {{a}}B)\\sin({{c}}x) + ({{c}}B + {{a}}A)\\cos({{c}}x) = {{b}}\\cos({{c}}x) \\]",
-      "De aquí, obtenemos el sistema de ecuaciones:",
-      "\\[ {{a}}A + {{c}}B = {{b}} \\\\ ",
-      " -{{c}}A + {{a}}B = 0 \\]",
+      "Sustituyendo en la ecuación diferencial se tiene: \\[ (-{{c}}A\\sin({{c}}x) + {{c}}B\\cos({{c}}x)) + {{a}}(A\\cos({{c}}x) + B\\sin({{c}}x)) = {{b}}\\cos({{c}}x) \\]",
+      "Al agrupar términos se obtiene: \\[ (-{{c}}A + {{a}}B)\\sin({{c}}x) + ({{c}}B + {{a}}A)\\cos({{c}}x) = {{b}}\\cos({{c}}x) \\]",
+      "De aquí, obtenemos el sistema de ecuaciones: $$ {{a}}A + {{c}}B = {{b}} \\\\ -{{c}}A + {{a}}B = 0 $$",
       "Al resolver el sistema resulta: \\[ A = \\frac{ {{a}}{{b}} }{ {{a}}^2 + {{c}}^2 } \\\\ B = \\frac{ {{c}}{{b}} }{ {{a}}^2 + {{c}}^2 } \\]",
       "La solución general está dada por: \\[ y = y_h + y_p \\]",
       "Finalmente, al aplicar la condición inicial \\( y(0) = {{d}} \\) se encuentra  \\( C \\)"
