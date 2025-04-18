@@ -147,7 +147,8 @@
   </ul>
   <p><strong>Reglas estrictas:</strong></p>
   <ul>
-    <li>Usa <code>*</code> para multiplicación (2*x)</li>
+    <li>Usa <code>*</code> para multiplicación (ej: 2*x)</li>
+    <li>No uses comillas en tu respuesta</li>
     <li>Usa paréntesis para agrupar: <code>(a+b)/(c+d)</code></li>
     <li>Funciones: <code>cos(x)</code>, <code>sin(x)</code>, <code>exp(x)</code></li>
     <li>No uses espacios</li>
@@ -176,6 +177,9 @@
       throw new Error("Expresión vacía o no válida");
     }
 
+    // Eliminar comillas externas si existen
+    expr = expr.trim().replace(/^['"]|['"]$/g, '');
+
     // Verificar paréntesis balanceados
     const stack = [];
     for (const char of expr) {
@@ -188,7 +192,6 @@
     if (stack.length > 0) throw new Error("Paréntesis no balanceados");
 
     // Verificar funciones mal escritas
-    const funcRegex = /(cos|sin|exp|log)\(/g;
     const malFunc = expr.match(/(cos|sin|exp|log)[^\(]/g);
     if (malFunc) {
       throw new Error(`Funciones mal escritas: ${malFunc.join(', ')}. Debe ser cos(...)`);
@@ -207,11 +210,24 @@
   // ===================== EVALUADOR CON DIAGNÓSTICO =====================
   function evaluateWithDiagnostic(expr, scope) {
     try {
+      // Validación de tipo
+      if (typeof expr !== 'string') {
+        throw new Error("La expresión debe ser un texto");
+      }
+      
+      // Eliminar comillas externas si existen
+      expr = expr.trim().replace(/^['"]|['"]$/g, '');
+      
+      // Validación de seguridad básica
+      if (/[^a-zA-Z0-9+\-*\/\^().,_=]/.test(expr)) {
+        throw new Error("Caracteres no permitidos en la expresión");
+      }
+
       const parsedExpr = parseExpression(expr);
       const evalFn = new Function(...Object.keys(scope), 
         `'use strict'; try { return ${parsedExpr}; } catch(e) { return NaN; }`);
       
-      const result = evaluateWithDiagnostic(...Object.values(scope));
+      const result = evalFn(...Object.values(scope));
       
       if (typeof result !== 'number' || isNaN(result)) {
         throw new Error("La expresión no produjo un número válido");
@@ -226,10 +242,13 @@
   // ===================== EVALUACIÓN DE SOLUCIÓN =====================
   function evaluateSolution(userInput, expectedSolution, params = {}) {
     try {
-      // Validación inicial
-      if (!userInput || userInput.trim().length < 3) {
-        throw new Error("La expresión es demasiado corta");
+      // Validación inicial mejorada
+      if (typeof userInput !== 'string' || userInput.trim().length < 3) {
+        throw new Error("La expresión es demasiado corta o no es un texto válido");
       }
+
+      // Eliminar comillas externas si existen
+      userInput = userInput.trim().replace(/^['"]|['"]$/g, '');
 
       const scope = {...params};
       let maxError = 0;
@@ -268,7 +287,8 @@
         throw new Error(`Solo se evaluó en ${validPoints}/${TEST_POINTS.length} puntos. Revise:` +
           `<br>1. Operadores de multiplicación (2*x no 2x)` +
           `<br>2. Funciones bien escritas (cos(x) no cosx)` +
-          `<br>3. Paréntesis balanceados`);
+          `<br>3. Paréntesis balanceados` +
+          `<br>4. No use comillas en la expresión`);
       }
 
       return {
@@ -370,7 +390,10 @@
           <p><strong>Ejercicio práctico ${i+1}:</strong> ${question}</p>
           <div class="param-info">Parámetros: ${paramsInfo}</div>
           <input type="text" placeholder="Ejemplo: (2*cos(3*x)+3*sin(3*x))/13 + 5*exp(-2*x)" class="answer-input">
-          <div class="format-help">Formato estricto: sin espacios, con * para multiplicación</div>
+          <div class="format-help">
+            <strong>Instrucciones:</strong> Escriba directamente la expresión sin comillas.<br>
+            Use * para multiplicación (2*x), funciones como cos(x), y paréntesis para agrupar.
+          </div>
           <div class="feedback hidden"></div>
         </div>
       `;
