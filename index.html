@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Examen de Ecuaciones Diferenciales</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjs@11.8.0/lib/browser/math.min.js"></script>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <style>
@@ -118,42 +118,39 @@
       color: #666;
       margin-top: 5px;
     }
-    .strict-format {
+    .diagnostic-info {
+      font-size: 0.8em;
       color: #d32f2f;
-      font-weight: bold;
       margin-top: 10px;
+      padding: 5px;
+      background: #ffebee;
+      border-radius: 4px;
     }
   </style>
 </head>
 <body>
 
-  <h1>Examen de Ecuaciones Diferenciales</h1>
+<h1>Examen de Ecuaciones Diferenciales</h1>
 <div id="quiz"></div>
 <button id="submit-btn">Enviar Examen</button>
 <button id="new-exam-btn" style="margin-left: 10px;">Nuevo Examen</button>
 <button id="format-help-btn" style="margin-left: 10px;">Ayuda de Formato</button>
 <div id="result" class="hidden"></div>
 
-<!-- Modal de ayuda de formato -->
 <div id="format-help-modal" class="format-modal">
-  <h3>Formato Aceptado para Respuestas</h3>
+  <h3>Formato Requerido</h3>
+  <p><strong>Ejemplos válidos:</strong></p>
   <ul>
-    <li><strong>Operadores:</strong> + - * / ^</li>
-    <li><strong>Funciones:</strong> exp(..), sin(..), cos(..), tan(..), log(..)</li>
-    <li><strong>Ejemplos válidos:</strong>
-      <ul>
-        <li>3*exp(-2*x) + 5</li>
-        <li>2*cos(4*x) - sin(3*x)</li>
-        <li>(x^2 + 1)/(x - 1)</li>
-      </ul>
-    </li>
-    <li><strong>Requisitos:</strong>
-      <ul>
-        <li>Usa * para multiplicación (2*x no 2x)</li>
-        <li>No uses espacios</li>
-        <li>Usa paréntesis para agrupar</li>
-      </ul>
-    </li>
+    <li><code>2*cos(3*x) + exp(-2*x)</code></li>
+    <li><code>(x^2 + 1)/(x - 1)</code></li>
+    <li><code>3*sin(2*x) - 4*cos(x)</code></li>
+  </ul>
+  <p><strong>Requisitos:</strong></p>
+  <ul>
+    <li>Usa siempre <code>*</code> para multiplicación</li>
+    <li>Funciones deben llevar paréntesis: <code>cos(x)</code> no <code>cos x</code></li>
+    <li>No uses espacios</li>
+    <li>Usa <code>exp(x)</code> para exponenciales</li>
   </ul>
   <button onclick="document.getElementById('format-help-modal').style.display='none'">Cerrar</button>
 </div>
@@ -163,23 +160,61 @@
 <script>
   // ===================== CONFIGURACIÓN =====================
   const TOLERANCE = 1e-6;
-  const TEST_POINTS = Array.from({length: 15}, (_, i) => 0.5 + i*0.15); // Puntos en [0.5, 2.6]
+  const TEST_POINTS = Array.from({length: 15}, (_, i) => 0.5 + i*0.15);
   let examQuestions = [];
   let currentParams = {};
 
+  // ===================== DIAGNÓSTICO INICIAL =====================
+  function checkMathJSCapabilities() {
+    const tests = {
+      'Carga de math.js': typeof math !== 'undefined',
+      'Función cos': typeof math.cos === 'function',
+      'Función sin': typeof math.sin === 'function',
+      'Función exp': typeof math.exp === 'function',
+      'Parser funciona': typeof math.parse === 'function',
+      'Evaluación cos(0)': math.evaluate('cos(0)') === 1,
+      'Evaluación 2*sin(0)': math.evaluate('2*sin(0)') === 0,
+      'Evaluación exp(0)': math.evaluate('exp(0)') === 1
+    };
+
+    let allPassed = true;
+    const results = [];
+    
+    for (const [testName, testResult] of Object.entries(tests)) {
+      if (!testResult) {
+        allPassed = false;
+        results.push(`❌ ${testName}`);
+        console.error(`Fallo en prueba: ${testName}`);
+      } else {
+        results.push(`✅ ${testName}`);
+      }
+    }
+
+    if (!allPassed) {
+      const diagnosticInfo = document.createElement('div');
+      diagnosticInfo.className = 'diagnostic-info';
+      diagnosticInfo.innerHTML = `
+        <strong>Problemas detectados:</strong>
+        <ul>
+          ${results.map(r => `<li>${r}</li>`).join('')}
+        </ul>
+        <p>Recarga la página o verifica tu conexión.</p>
+      `;
+      document.body.prepend(diagnosticInfo);
+    }
+
+    return allPassed;
+  }
+
   // ===================== EVALUACIÓN MEJORADA =====================
-  function evaluateExpression(expr, scope) {
+  function safeEvaluate(expr, scope) {
     try {
-      // Crear un objeto de expresión mathjs
+      // Primero intentar evaluar directamente
       const node = math.parse(expr);
-      
-      // Compilar para evaluación más eficiente
-      const code = node.compile();
-      
-      // Evaluar con el ámbito proporcionado
-      return code.evaluate(scope);
+      const compiled = node.compile();
+      return compiled.evaluate(scope);
     } catch (e) {
-      throw new Error(`Error al evaluar: ${e.message}`);
+      throw new Error(`No se pudo evaluar '${expr}': ${e.message}`);
     }
   }
 
@@ -197,15 +232,12 @@
         try {
           scope.x = x;
           
-          // Evaluar ambas expresiones
-          const userVal = evaluateExpression(userInput, scope);
-          const expectedVal = evaluateExpression(expectedSolution, scope);
+          const userVal = safeEvaluate(userInput, scope);
+          const expectedVal = safeEvaluate(expectedSolution, scope);
 
-          // Manejar casos especiales
           if (!isFinite(userVal)) continue;
           if (Math.abs(expectedVal) > 1e12) continue;
 
-          // Calcular error relativo
           const error = Math.abs(userVal - expectedVal) / (1 + Math.abs(expectedVal));
           maxError = Math.max(maxError, error);
           validPoints++;
@@ -218,7 +250,7 @@
       if (validPoints < TEST_POINTS.length * 0.6) {
         return { 
           isValid: false, 
-          error: "No se pudo evaluar la expresión. Verifica el formato." 
+          error: "No se pudo evaluar. Verifica que usaste funciones como cos(), sin(), exp() correctamente." 
         };
       }
 
@@ -237,6 +269,10 @@
 
   // ===================== GENERACIÓN DEL EXAMEN =====================
   function generateExam() {
+    if (!checkMathJSCapabilities()) {
+      return;
+    }
+
     const quizContainer = document.getElementById('quiz');
     quizContainer.innerHTML = '';
     examQuestions = [];
@@ -318,8 +354,8 @@
         <div class="question" data-type="practical" data-index="${i + 2}">
           <p><strong>Ejercicio práctico ${i+1}:</strong> ${question}</p>
           <div class="param-info">Parámetros: ${paramsInfo}</div>
-          <input type="text" placeholder="Ejemplo: 2*cos(4*x) + 3*exp(-2*x)" class="answer-input">
-          <div class="format-help">Usa * para multiplicación. Ejemplo: 2*cos(3*x)</div>
+          <input type="text" placeholder="Ejemplo: 2*cos(3*x) + exp(-2*x)" class="answer-input">
+          <div class="format-help">Usa funciones como cos(), sin(), exp() sin espacios</div>
           <div class="feedback hidden"></div>
         </div>
       `;
@@ -393,6 +429,12 @@
 
   // ===================== INICIALIZACIÓN =====================
   document.addEventListener('DOMContentLoaded', () => {
+    // Verificar math.js primero
+    if (!checkMathJSCapabilities()) {
+      return;
+    }
+
+    // Cargar MathJax
     if (window.MathJax) {
       MathJax.startup.promise.then(() => {
         generateExam();
