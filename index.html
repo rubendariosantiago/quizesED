@@ -176,25 +176,26 @@
   let currentParams = {};
   let debugMode = false;
 
+
   // ===================== FUNCIONES AUXILIARES =====================
   function preprocessInput(input) {
     if (!input) return '';
     
     return input
-      .replace(/\s+/g, '')
-      .replace(/\^/g, '**')
-      .replace(/(\d)([a-zA-Z\(])/g, '$1*$2')
-      .replace(/([a-zA-Z\)])(\d)/g, '$1*$2')
-      .replace(/([a-zA-Z\)])([a-zA-Z\(])/g, '$1*$2')
-      .replace(/e\^\((.+?)\)/g, 'exp($1)')
-      .replace(/(\d+)e\b/g, '$1*exp(1)')
-      .replace(/ln\(/g, 'log(')
-      .replace(/([+\-*/])([+-])/g, '$1 $2')
-      .replace(/(\d)\(/g, '$1*(')
-      .replace(/\)(\d)/g, ')*$1')
-      .replace(/(sin|cos|tan)\^2\((.+?)\)/g, '(($1($2))^2)') // Manejar sin^2(x)
-      .replace(/(sin|cos|tan)\^\((.+?)\)/g, '(($1($2))^$3)') // Manejar sin^(n)(x)
-      .replace(/\/\/.+$/g, '');
+      .replace(/\s+/g, '') // Eliminar TODOS los espacios primero
+      .replace(/\*\*/g, '^') // Usar ^ para potencias
+      .replace(/(\d)([a-zA-z\(])/g, '$1*$2') // 2x -> 2*x
+      .replace(/([a-zA-Z\)])(\d)/g, '$1*$2') // x2 -> x*2
+      .replace(/([a-zA-Z\)])([a-zA-Z\(])/g, '$1*$2') // xy -> x*y
+      .replace(/e\^\((.+?)\)/g, 'exp($1)') // e^(x) -> exp(x)
+      .replace(/(\d+)e\b/g, '$1*exp(1)') // 2e -> 2*exp(1)
+      .replace(/ln\(/g, 'log(') // ln -> log
+      .replace(/(\d)\(/g, '$1*(') // 2(x+1) -> 2*(x+1)
+      .replace(/\)(\d)/g, ')*$1') // (x+1)2 -> (x+1)*2
+      .replace(/(sin|cos|tan)\^2\((.+?)\)/g, '(($1($2))^2)') // sin^2(x)
+      .replace(/exp\(/g, 'exp(') // Asegurar formato correcto
+      .replace(/e\^/g, 'exp') // Convertir e^ a exp
+      .replace(/([+\-*/^])([+-])/g, '$1 $2'); // Manejar signos dobles
   }
 
   function containsTrig(expr) {
@@ -203,11 +204,18 @@
 
   function safeEvaluate(expr, scope) {
     try {
-      const node = math.parse(expr);
-      const compiled = node.compile();
+      // Primero intentamos simplificar la expresión
+      const simplified = math.simplify(math.parse(expr)).toString();
+      const compiled = math.compile(simplified);
       return compiled.evaluate(scope);
     } catch (e) {
-      throw new Error(`Error evaluando expresión: ${e.message}`);
+      try {
+        // Si falla, intentamos evaluación directa
+        const compiled = math.compile(expr);
+        return compiled.evaluate(scope);
+      } catch (e2) {
+        throw new Error(`Error de evaluación: ${e2.message}`);
+      }
     }
   }
 
@@ -216,7 +224,6 @@
     let maxError = 0;
     let validPoints = 0;
     
-    // Seleccionar puntos de prueba apropiados
     const testPoints = containsTrig(expectedExpr) 
       ? [...REGULAR_POINTS, ...TRIG_POINTS] 
       : REGULAR_POINTS;
@@ -228,29 +235,31 @@
         const userVal = safeEvaluate(userExpr, scope);
         const expectedVal = safeEvaluate(expectedExpr, scope);
         
-        // Manejar casos especiales
-        if (!isFinite(userVal)) return { isValid: false, error: "Resultado no finito" };
+        if (!isFinite(userVal)) continue;
         if (Math.abs(expectedVal) > 1e12) continue;
         
-        // Error relativo suavizado
         const error = Math.abs(userVal - expectedVal) / (1 + Math.abs(expectedVal));
         maxError = Math.max(maxError, error);
         validPoints++;
       } catch (e) {
-        console.warn(`Error en x=${x}:`, e);
         continue;
       }
     }
     
     if (validPoints < testPoints.length * 0.6) {
-      return { isValid: false, error: "No se pudo evaluar en suficientes puntos" };
+      return { 
+        isValid: false, 
+        error: "No se pudo evaluar en suficientes puntos. Verifica el formato de tu respuesta.",
+        maxError: null,
+        validPoints: validPoints
+      };
     }
     
     return {
       isValid: maxError < TOLERANCE,
       error: `Error máximo: ${maxError.toExponential(2)}`,
       maxError: maxError,
-      testPointsUsed: validPoints
+      validPoints: validPoints
     };
   }
 
