@@ -211,7 +211,7 @@
       const evalFn = new Function(...Object.keys(scope), 
         `'use strict'; try { return ${parsedExpr}; } catch(e) { return NaN; }`);
       
-      const result = evalFn(...Object.values(scope));
+      const result = evaluateWithDiagnostic(...Object.values(scope));
       
       if (typeof result !== 'number' || isNaN(result)) {
         throw new Error("La expresión no produjo un número válido");
