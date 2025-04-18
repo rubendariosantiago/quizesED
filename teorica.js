@@ -29,11 +29,11 @@ const theoryQuestions = [
       "\\( y = C + e^{3x} \\)",
       "\\( y = Cx^3 \\)"
     ],
-    answer: 0,
+    answer: 1,
     solution: "La ecuación diferencial es separable: \\[ \\frac{dy}{y} = 3dx \\Longrightarrow \\ln|y| = 3x + C \\Longrightarrow y = Ce^{3x} \\]"
   },
     {
-    question: "Determina la ecuación diferencial de primer porden que es lineal",
+    question: "Determina la ecuación diferencial de primer orden que es lineal",
     options: [
       "\\( \\displaystyle{ y\\frac{dy}{dx} + 2y = e^{3x} }\\)",
       "\\( \\displaystyle{ \\frac{dy}{dx} + 2x^2y = xe^{3x} } \\)",
