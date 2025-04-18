@@ -265,9 +265,9 @@
         <div class="question" data-type="theory" data-index="${i}">
           <p><strong>Pregunta teórica ${i+1}:</strong> ${q.question}</p>
           ${shuffledOptions.map((opt, idx) => `
-            <label>
+            <label><p>
               <input type="radio" name="theory-${i}" value="${idx}">
-              ${opt}
+              ${opt}</p>
             </label>
           `).join('')}
           <div class="feedback hidden"></div>
