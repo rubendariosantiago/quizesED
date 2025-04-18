@@ -142,8 +142,8 @@
   <p><strong>Ejemplos válidos:</strong></p>
   <ul>
     <li><code>2*cos(3*x) + exp(-2*x)</code></li>
-    <li><code>(x^2 + 1)/(x - 1)</code></li>
-    <li><code>3*sin(2*x) - 4*cos(x)</code></li>
+    <li><code>(3*cos(2*x) + 4*sin(2*x))/5 + 2*exp(-3*x)</code></li>
+    <li><code>5 + (x-1)*log(x+1)</code></li>
   </ul>
   <p><strong>Requisitos:</strong></p>
   <ul>
@@ -151,6 +151,7 @@
     <li>Funciones deben llevar paréntesis: <code>cos(x)</code> no <code>cos x</code></li>
     <li>No uses espacios</li>
     <li>Usa <code>exp(x)</code> para exponenciales</li>
+    <li>Usa <code>^</code> o <code>**</code> para potencias</li>
   </ul>
   <button onclick="document.getElementById('format-help-modal').style.display='none'">Cerrar</button>
 </div>
@@ -164,69 +165,37 @@
   let examQuestions = [];
   let currentParams = {};
 
-  // ===================== DIAGNÓSTICO INICIAL =====================
-  function checkMathJSCapabilities() {
-    const tests = {
-      'Carga de math.js': typeof math !== 'undefined',
-      'Función cos': typeof math.cos === 'function',
-      'Función sin': typeof math.sin === 'function',
-      'Función exp': typeof math.exp === 'function',
-      'Parser funciona': typeof math.parse === 'function',
-      'Evaluación cos(0)': math.evaluate('cos(0)') === 1,
-      'Evaluación 2*sin(0)': math.evaluate('2*sin(0)') === 0,
-      'Evaluación exp(0)': math.evaluate('exp(0)') === 1
-    };
-
-    let allPassed = true;
-    const results = [];
-    
-    for (const [testName, testResult] of Object.entries(tests)) {
-      if (!testResult) {
-        allPassed = false;
-        results.push(`❌ ${testName}`);
-        console.error(`Fallo en prueba: ${testName}`);
-      } else {
-        results.push(`✅ ${testName}`);
-      }
-    }
-
-    if (!allPassed) {
-      const diagnosticInfo = document.createElement('div');
-      diagnosticInfo.className = 'diagnostic-info';
-      diagnosticInfo.innerHTML = `
-        <strong>Problemas detectados:</strong>
-        <ul>
-          ${results.map(r => `<li>${r}</li>`).join('')}
-        </ul>
-        <p>Recarga la página o verifica tu conexión.</p>
-      `;
-      document.body.prepend(diagnosticInfo);
-    }
-
-    return allPassed;
-  }
-
-  // ===================== EVALUACIÓN MEJORADA =====================
+  // ===================== EVALUADOR ROBUSTO =====================
   function safeEvaluate(expr, scope) {
     try {
-      // Primero intentar evaluar directamente
-      const node = math.parse(expr);
-      const compiled = node.compile();
-      return compiled.evaluate(scope);
+      // Convertir ^ a ** para compatibilidad
+      const processedExpr = expr.replace(/\^/g, '**')
+                               .replace(/e\^\(/g, 'exp(')
+                               .replace(/(\d)([a-zA-Z\(])/g, '$1*$2');
+      
+      // Crear función de evaluación
+      const evalFn = new Function(...Object.keys(scope), 
+        `'use strict'; try { return ${processedExpr}; } catch(e) { return NaN; }`);
+      
+      return evalFn(...Object.values(scope));
     } catch (e) {
-      throw new Error(`No se pudo evaluar '${expr}': ${e.message}`);
+      return NaN;
     }
   }
 
+  // ===================== EVALUACIÓN DE SOLUCIÓN =====================
   function evaluateSolution(userInput, expectedSolution, params = {}) {
-    if (!userInput || !userInput.trim()) {
-      return { isValid: false, error: "La respuesta está vacía" };
+    if (!userInput || userInput.trim().length < 3) {
+      return { 
+        isValid: false, 
+        error: "La expresión es demasiado corta o vacía" 
+      };
     }
 
     try {
-      const scope = { ...params };
       let maxError = 0;
       let validPoints = 0;
+      const scope = {...params};
 
       for (const x of TEST_POINTS) {
         try {
@@ -242,7 +211,6 @@
           maxError = Math.max(maxError, error);
           validPoints++;
         } catch (e) {
-          console.warn(`Error en x=${x}:`, e);
           continue;
         }
       }
@@ -250,35 +218,34 @@
       if (validPoints < TEST_POINTS.length * 0.6) {
         return { 
           isValid: false, 
-          error: "No se pudo evaluar. Verifica que usaste funciones como cos(), sin(), exp() correctamente." 
+          error: `No se pudo evaluar. Verifica:
+            - Usas funciones como cos(), sin(), exp() correctamente
+            - No faltan operadores de multiplicación (*)
+            - La expresión está completa` 
         };
       }
 
       return {
         isValid: maxError < TOLERANCE,
-        error: maxError < TOLERANCE ? null : `Error máximo: ${maxError.toExponential(2)}`,
+        error: maxError < TOLERANCE ? null : `Error relativo máximo: ${maxError.toExponential(2)}`,
         maxError: maxError
       };
     } catch (e) {
       return {
         isValid: false,
-        error: `Error: ${e.message}`
+        error: `Error en la expresión: ${e.message}`
       };
     }
   }
 
   // ===================== GENERACIÓN DEL EXAMEN =====================
   function generateExam() {
-    if (!checkMathJSCapabilities()) {
-      return;
-    }
-
     const quizContainer = document.getElementById('quiz');
     quizContainer.innerHTML = '';
     examQuestions = [];
     currentParams = {};
 
-    // Preguntas teóricas
+    // Preguntas teóricas (2 aleatorias)
     const shuffledTheories = [...theoryQuestions].sort(() => Math.random() - 0.5).slice(0, 2);
     
     shuffledTheories.forEach((q, i) => {
@@ -307,7 +274,7 @@
       `;
     });
 
-    // Problemas prácticos
+    // Problemas prácticos (3 aleatorios)
     const shuffledPracticals = [...practicalTemplates].sort(() => Math.random() - 0.5).slice(0, 3);
     
     shuffledPracticals.forEach((template, i) => {
@@ -399,12 +366,20 @@
           feedbackElement.innerHTML = '✅ Correcto!';
           feedbackElement.className = 'feedback correct';
         } else {
+          let errorDetails = evaluation.error;
+          
+          // Sugerencias específicas para problemas comunes
+          if (userInput.includes('cos(') && !userInput.includes('exp(')) {
+            errorDetails += "<br><br>¿Olvidaste incluir el término exponencial en tu solución?";
+          } else if (userInput.includes('x') && !userInput.includes('*')) {
+            errorDetails += "<br><br>¿Faltan operadores de multiplicación (*) antes de la x?";
+          }
+          
           feedbackElement.innerHTML = `
             ❌ Respuesta incorrecta<br><br>
             <strong>Tu respuesta:</strong> <code>${userInput || "(vacío)"}</code><br>
-            <strong>Error:</strong> ${evaluation.error}<br>
+            <strong>Error:</strong> ${errorDetails}<br>
             <strong>Solución esperada:</strong> <span class="mathjax">${q.solution_latex}</span>
-            ${evaluation.maxError ? `<div class="error-details">Error máximo: ${evaluation.maxError.toExponential(2)}</div>` : ''}
             ${q.steps.length > 0 ? `
             <div class="solution-steps">
               <strong>Pasos de solución:</strong>
@@ -429,12 +404,6 @@
 
   // ===================== INICIALIZACIÓN =====================
   document.addEventListener('DOMContentLoaded', () => {
-    // Verificar math.js primero
-    if (!checkMathJSCapabilities()) {
-      return;
-    }
-
-    // Cargar MathJax
     if (window.MathJax) {
       MathJax.startup.promise.then(() => {
         generateExam();
