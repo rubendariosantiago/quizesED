@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Examen de Ecuaciones Diferenciales</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .question {
+      background: #f9f9f9;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    .feedback {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .correct {
+      background: #e6f7e6;
+      border-left: 4px solid #4CAF50;
+    }
+    .incorrect {
+      background: #ffebee;
+      border-left: 4px solid #f44336;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    #result {
+      font-size: 18px;
+      margin: 20px 0;
+      padding: 15px;
+      text-align: center;
+      border-radius: 8px;
+      background: #f0f8ff;
+    }
+    .hidden {
+      display: none;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .solution-steps {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f0f7ff;
+      border-left: 4px solid #2196F3;
+      border-radius: 4px;
+    }
+    .solution-steps div {
+      margin: 8px 0;
+      padding-left: 15px;
+      border-left: 2px solid #2196F3;
+    }
+    .mathjax {
+      color: #d63384;
+      font-family: "Times New Roman", serif;
+    }
+    .param-info {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 5px;
+    }
+    .format-help {
+      font-size: 0.8em;
+      color: #666;
+      margin-top: 5px;
+      font-style: italic;
+    }
+    code {
+      font-family: monospace;
+      background: #f0f0f0;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    .format-modal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      z-index: 1000;
+      max-width: 80%;
+    }
+    .error-details {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 5px;
+    }
+    .strict-format {
+      color: #d32f2f;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Examen de Ecuaciones Diferenciales</h1>
+<div id="quiz"></div>
+<button id="submit-btn">Enviar Examen</button>
+<button id="new-exam-btn" style="margin-left: 10px;">Nuevo Examen</button>
+<button id="format-help-btn" style="margin-left: 10px;">Ayuda de Formato</button>
+<div id="result" class="hidden"></div>
+
+<div id="format-help-modal" class="format-modal">
+  <h3>Formato Estricto Requerido</h3>
+  <p><strong>No se realizará preprocesamiento automático. Debes escribir exactamente en este formato:</strong></p>
+  <ul>
+    <li><strong>Operadores:</strong> + - * / ^</li>
+    <li><strong>Funciones:</strong> exp(...), sin(...), cos(...), tan(...), log(...)</li>
+    <li><strong>Multiplicación:</strong> Siempre use * (2*x en lugar de 2x)</li>
+    <li><strong>Exponenciales:</strong> exp(x) en lugar de e^x</li>
+    <li><strong>Sin espacios:</strong> 2*sin(x) no 2 * sin( x )</li>
+    <li><strong>Ejemplos válidos:</strong>
+      <ul>
+        <li>(2/3)*exp(-3*x) + 4/3</li>
+        <li>3*sin(2*x) + cos(x)</li>
+        <li>(x^2 + 1)/(x - 1)</li>
+      </ul>
+    </li>
+  </ul>
+  <button onclick="document.getElementById('format-help-modal').style.display='none'">Cerrar</button>
+</div>
+
+<script src="teorica.js"></script>
+<script src="practica.js"></script>
+<script>
+  // ===================== CONFIGURACIÓN =====================
+  const TOLERANCE = 1e-6;
+  const TEST_POINTS = Array.from({length: 15}, (_, i) => 0.5 + i*0.15); // Puntos en [0.5, 2.6]
+  let examQuestions = [];
+  let currentParams = {};
+
+  // ===================== VALIDACIÓN ESTRICTA =====================
+  function isValidExpression(expr) {
+    if (!expr || expr.includes(' ')) return false;
+    
+    // Caracteres permitidos
+    const allowedChars = /^[0-9x+\-*\/\^().esincotaqlgπ]+$/;
+    if (!allowedChars.test(expr)) return false;
+    
+    // Funciones permitidas
+    const allowedFunctions = ['exp', 'sin', 'cos', 'tan', 'log'];
+    const functionCalls = expr.match(/[a-z]+\(/g) || [];
+    
+    for (const fnCall of functionCalls) {
+      const fnName = fnCall.replace('(', '');
+      if (!allowedFunctions.includes(fnName)) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  // ===================== EVALUACIÓN DIRECTA =====================
+  function evaluateSolution(userInput, expectedSolution, params = {}) {
+    // Validación estricta
+    if (!isValidExpression(userInput)) {
+      return {
+        isValid: false,
+        error: "Formato inválido. Usa solo números, x, operadores (+-*/^) y funciones como exp(), sin(), cos() sin espacios."
+      };
+    }
+
+    try {
+      const scope = {...params};
+      let maxError = 0;
+      let validPoints = 0;
+      
+      for (const x of TEST_POINTS) {
+        try {
+          scope.x = x;
+          
+          const userVal = math.evaluate(userInput, scope);
+          const expectedVal = math.evaluate(expectedSolution, scope);
+          
+          if (!isFinite(userVal)) continue;
+          if (Math.abs(expectedVal) > 1e12) continue;
+          
+          const error = Math.abs(userVal - expectedVal) / (1 + Math.abs(expectedVal));
+          maxError = Math.max(maxError, error);
+          validPoints++;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (validPoints < TEST_POINTS.length * 0.6) {
+        return {
+          isValid: false,
+          error: "No se pudo evaluar. Verifica el formato exacto requerido.",
+          maxError: null
+        };
+      }
+      
+      return {
+        isValid: maxError < TOLERANCE,
+        error: maxError < TOLERANCE ? null : `Error relativo máximo: ${maxError.toExponential(2)}`,
+        maxError: maxError
+      };
+    } catch (e) {
+      return {
+        isValid: false,
+        error: `Error de evaluación: ${e.message}`
+      };
+    }
+  }
+
+  // ===================== GENERACIÓN DEL EXAMEN =====================
+  function generateExam() {
+    const quizContainer = document.getElementById('quiz');
+    quizContainer.innerHTML = '';
+    examQuestions = [];
+    currentParams = {};
+
+    // Preguntas teóricas
+    const shuffledTheories = [...theoryQuestions].sort(() => Math.random() - 0.5).slice(0, 2);
+    
+    shuffledTheories.forEach((q, i) => {
+      const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+      const correctIndex = shuffledOptions.indexOf(q.options[q.answer]);
+      
+      examQuestions.push({
+        type: 'theory',
+        question: q.question,
+        options: shuffledOptions,
+        correctAnswer: correctIndex,
+        solution: q.solution
+      });
+
+      quizContainer.innerHTML += `
+        <div class="question" data-type="theory" data-index="${i}">
+          <p><strong>Pregunta teórica ${i+1}:</strong> ${q.question}</p>
+          ${shuffledOptions.map((opt, idx) => `
+            <label>
+              <input type="radio" name="theory-${i}" value="${idx}">
+              ${opt}
+            </label>
+          `).join('')}
+          <div class="feedback hidden"></div>
+        </div>
+      `;
+    });
+
+    // Problemas prácticos
+    const shuffledPracticals = [...practicalTemplates].sort(() => Math.random() - 0.5).slice(0, 3);
+    
+    shuffledPracticals.forEach((template, i) => {
+      const params = {};
+      Object.keys(template.params).forEach(key => {
+        let value;
+        do {
+          value = math.randomInt(template.params[key].min, template.params[key].max + 1);
+        } while (template.params[key].nonZero && value === 0);
+        params[key] = value;
+      });
+
+      const question = template.template.replace(/\{\{(.+?)\}\}/g, (_, expr) => {
+        try {
+          return math.evaluate(expr, params).toString();
+        } catch (e) {
+          return `{{${expr}}}`;
+        }
+      }).replace(/\\\(/g, '').replace(/\\\)/g, '');
+
+      const solutionMathjs = template.solution_mathjs.replace(/\{\{(.+?)\}\}/g, (_, expr) => {
+        return math.evaluate(expr, params).toString();
+      });
+
+      const solutionLatex = template.solution_latex.replace(/\{\{(.+?)\}\}/g, (_, expr) => {
+        return math.evaluate(expr, params).toString();
+      });
+
+      currentParams[`practical-${i}`] = params;
+
+      examQuestions.push({
+        type: 'practical',
+        question: question,
+        solution_mathjs: solutionMathjs,
+        solution_latex: solutionLatex,
+        params: params,
+        steps: template.steps || []
+      });
+
+      const paramsInfo = Object.entries(params).map(([key, value]) => 
+        `${key} = ${value}`).join(', ');
+
+      quizContainer.innerHTML += `
+        <div class="question" data-type="practical" data-index="${i + 2}">
+          <p><strong>Ejercicio práctico ${i+1}:</strong> ${question}</p>
+          <div class="param-info">Parámetros: ${paramsInfo}</div>
+          <input type="text" placeholder="Ejemplo: (4/3)+(2/3)*exp(-3*x)" class="answer-input">
+          <div class="strict-format">FORMATO ESTRICTO REQUERIDO (ver ayuda)</div>
+          <div class="format-help">Usa * para multiplicación. Funciones: exp(), sin(), cos(). Sin espacios.</div>
+          <div class="feedback hidden"></div>
+        </div>
+      `;
+    });
+
+    if (window.MathJax) {
+      MathJax.typesetPromise();
+    }
+  }
+
+  // ===================== EVALUAR EXAMEN =====================
+  function submitExam() {
+    let score = 0;
+    const results = [];
+
+    examQuestions.forEach((q, i) => {
+      const questionElement = document.querySelector(`.question[data-index="${i}"]`);
+      const feedbackElement = questionElement.querySelector('.feedback');
+      
+      if (q.type === 'theory') {
+        const selectedOption = questionElement.querySelector('input[type="radio"]:checked');
+        const isCorrect = selectedOption && parseInt(selectedOption.value) === q.correctAnswer;
+        
+        if (isCorrect) {
+          score++;
+          feedbackElement.innerHTML = '✅ Correcto!';
+          feedbackElement.className = 'feedback correct';
+        } else {
+          feedbackElement.innerHTML = `
+            ❌ Incorrecto. La respuesta correcta es: <span class="mathjax">${q.options[q.correctAnswer]}</span>
+            <div class="solution-steps">Explicación: ${q.solution}</div>
+          `;
+          feedbackElement.className = 'feedback incorrect';
+        }
+      } else {
+        const userInput = questionElement.querySelector('input').value.trim();
+        const evaluation = evaluateSolution(userInput, q.solution_mathjs, q.params);
+        
+        if (evaluation.isValid) {
+          score++;
+          feedbackElement.innerHTML = '✅ Correcto!';
+          feedbackElement.className = 'feedback correct';
+        } else {
+          feedbackElement.innerHTML = `
+            ❌ Respuesta incorrecta<br><br>
+            <strong>Tu respuesta:</strong> <code>${userInput || "(vacío)"}</code><br>
+            <strong>Error:</strong> ${evaluation.error}<br>
+            <strong>Solución esperada:</strong> <span class="mathjax">${q.solution_latex}</span>
+            ${evaluation.maxError ? `<div class="error-details">Error relativo máximo: ${evaluation.maxError.toExponential(2)}</div>` : ''}
+            ${q.steps.length > 0 ? `
+            <div class="solution-steps">
+              <strong>Pasos de solución:</strong>
+              ${q.steps.map((step, idx) => `<div><strong>Paso ${idx+1}:</strong> ${step.replace(/\{\{(.+?)\}\}/g, (_, expr) => math.evaluate(expr, q.params))}</div>`).join('')}
+            </div>` : ''}
+          `;
+          feedbackElement.className = 'feedback incorrect';
+        }
+      }
+
+      feedbackElement.classList.remove('hidden');
+    });
+
+    const resultContainer = document.getElementById('result');
+    resultContainer.innerHTML = `Tu calificación final es <strong>${score} / ${examQuestions.length}</strong>`;
+    resultContainer.classList.remove('hidden');
+
+    if (window.MathJax) {
+      MathJax.typesetPromise();
+    }
+  }
+
+  // ===================== INICIALIZACIÓN =====================
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.MathJax) {
+      MathJax.startup.promise.then(() => {
+        generateExam();
+      }).catch(err => {
+        console.error("Error al cargar MathJax:", err);
+        generateExam();
+      });
+    } else {
+      generateExam();
+    }
+    
+    document.getElementById('submit-btn').addEventListener('click', submitExam);
+    document.getElementById('new-exam-btn').addEventListener('click', generateExam);
+    document.getElementById('format-help-btn').addEventListener('click', () => {
+      document.getElementById('format-help-modal').style.display = 'block';
+    });
+  });
+</script>
+</body>
+</html>
