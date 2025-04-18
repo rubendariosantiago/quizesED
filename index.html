@@ -198,14 +198,18 @@
     }
 
     // Preprocesamiento inteligente
-    return expr
-      .replace(/\s+/g, '')
-      .replace(/\^/g, '**')
-      .replace(/([0-9])([a-zA-Z])/g, '$1*$2')
-      .replace(/([a-zA-Z])([0-9])/g, '$1*$2')
-      .replace(/e\*\*\(/g, 'exp(')
-      .replace(/([+\-*/])([+-])/g, '$1 $2');
-  }
+  return expr
+    .replace(/\s+/g, '')
+    .replace(/\^/g, '**')
+    .replace(/([0-9])([a-zA-Z])/g, '$1*$2')
+    .replace(/([a-zA-Z])([0-9])/g, '$1*$2')
+    .replace(/e\*\*\(/g, 'exp(')
+    .replace(/exp\(/g, 'Math.exp(')  // Transforma exp() a Math.exp()
+    .replace(/sin\(/g, 'Math.sin(')  // Transforma sin() a Math.sin()
+    .replace(/cos\(/g, 'Math.cos(')  // Transforma cos() a Math.cos()
+    .replace(/log\(/g, 'Math.log(')  // Transforma log() a Math.log()
+    .replace(/([+\-*/])([+-])/g, '$1 $2');
+}
 
   // ===================== EVALUADOR CON DIAGNÓSTICO =====================
   function evaluateWithDiagnostic(expr, scope) {
@@ -219,7 +223,7 @@
       expr = expr.trim().replace(/^['"]|['"]$/g, '');
       
       // Validación de seguridad básica
-      if (/[^a-zA-Z0-9+\-*\/\^().,_=]/.test(expr)) {
+      if (/[^a-zA-Z0-9+\-*\/\^().,_=Math]/.test(expr)) {
         throw new Error("Caracteres no permitidos en la expresión");
       }
 
@@ -230,7 +234,7 @@
       const result = evalFn(...Object.values(scope));
       
       if (typeof result !== 'number' || isNaN(result)) {
-        throw new Error("La expresión no produjo un número válido");
+        throw new Error("La expresión no produjo un número válido. Verifique funciones como exp(), sin(), cos()");
       }
       return result;
     } catch (e) {
