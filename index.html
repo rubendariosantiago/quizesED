@@ -127,27 +127,31 @@
 </head>
 <body>
 
-<h1>Examen de Ecuaciones Diferenciales</h1>
+  <h1>Examen de Ecuaciones Diferenciales</h1>
 <div id="quiz"></div>
 <button id="submit-btn">Enviar Examen</button>
 <button id="new-exam-btn" style="margin-left: 10px;">Nuevo Examen</button>
 <button id="format-help-btn" style="margin-left: 10px;">Ayuda de Formato</button>
 <div id="result" class="hidden"></div>
 
+<!-- Modal de ayuda de formato -->
 <div id="format-help-modal" class="format-modal">
-  <h3>Formato Estricto Requerido</h3>
-  <p><strong>No se realizará preprocesamiento automático. Debes escribir exactamente en este formato:</strong></p>
+  <h3>Formato Aceptado para Respuestas</h3>
   <ul>
     <li><strong>Operadores:</strong> + - * / ^</li>
-    <li><strong>Funciones:</strong> exp(...), sin(...), cos(...), tan(...), log(...)</li>
-    <li><strong>Multiplicación:</strong> Siempre use * (2*x en lugar de 2x)</li>
-    <li><strong>Exponenciales:</strong> exp(x) en lugar de e^x</li>
-    <li><strong>Sin espacios:</strong> 2*sin(x) no 2 * sin( x )</li>
+    <li><strong>Funciones:</strong> exp(..), sin(..), cos(..), tan(..), log(..)</li>
     <li><strong>Ejemplos válidos:</strong>
       <ul>
-        <li>(2/3)*exp(-3*x) + 4/3</li>
-        <li>3*sin(2*x) + cos(x)</li>
+        <li>3*exp(-2*x) + 5</li>
+        <li>2*cos(4*x) - sin(3*x)</li>
         <li>(x^2 + 1)/(x - 1)</li>
+      </ul>
+    </li>
+    <li><strong>Requisitos:</strong>
+      <ul>
+        <li>Usa * para multiplicación (2*x no 2x)</li>
+        <li>No uses espacios</li>
+        <li>Usa paréntesis para agrupar</li>
       </ul>
     </li>
   </ul>
@@ -163,78 +167,70 @@
   let examQuestions = [];
   let currentParams = {};
 
-  // ===================== VALIDACIÓN ESTRICTA =====================
-  function isValidExpression(expr) {
-    if (!expr || expr.includes(' ')) return false;
-    
-    // Caracteres permitidos
-    const allowedChars = /^[0-9x+\-*\/\^().esincotaqlgπ]+$/;
-    if (!allowedChars.test(expr)) return false;
-    
-    // Funciones permitidas
-    const allowedFunctions = ['exp', 'sin', 'cos', 'tan', 'log'];
-    const functionCalls = expr.match(/[a-z]+\(/g) || [];
-    
-    for (const fnCall of functionCalls) {
-      const fnName = fnCall.replace('(', '');
-      if (!allowedFunctions.includes(fnName)) {
-        return false;
-      }
+  // ===================== EVALUACIÓN MEJORADA =====================
+  function evaluateExpression(expr, scope) {
+    try {
+      // Crear un objeto de expresión mathjs
+      const node = math.parse(expr);
+      
+      // Compilar para evaluación más eficiente
+      const code = node.compile();
+      
+      // Evaluar con el ámbito proporcionado
+      return code.evaluate(scope);
+    } catch (e) {
+      throw new Error(`Error al evaluar: ${e.message}`);
     }
-    
-    return true;
   }
 
-  // ===================== EVALUACIÓN DIRECTA =====================
   function evaluateSolution(userInput, expectedSolution, params = {}) {
-    // Validación estricta
-    if (!isValidExpression(userInput)) {
-      return {
-        isValid: false,
-        error: "Formato inválido. Usa solo números, x, operadores (+-*/^) y funciones como exp(), sin(), cos() sin espacios."
-      };
+    if (!userInput || !userInput.trim()) {
+      return { isValid: false, error: "La respuesta está vacía" };
     }
 
     try {
-      const scope = {...params};
+      const scope = { ...params };
       let maxError = 0;
       let validPoints = 0;
-      
+
       for (const x of TEST_POINTS) {
         try {
           scope.x = x;
           
-          const userVal = math.evaluate(userInput, scope);
-          const expectedVal = math.evaluate(expectedSolution, scope);
-          
+          // Evaluar ambas expresiones
+          const userVal = evaluateExpression(userInput, scope);
+          const expectedVal = evaluateExpression(expectedSolution, scope);
+
+          // Manejar casos especiales
           if (!isFinite(userVal)) continue;
           if (Math.abs(expectedVal) > 1e12) continue;
-          
+
+          // Calcular error relativo
           const error = Math.abs(userVal - expectedVal) / (1 + Math.abs(expectedVal));
           maxError = Math.max(maxError, error);
           validPoints++;
         } catch (e) {
+          console.warn(`Error en x=${x}:`, e);
           continue;
         }
       }
-      
+
       if (validPoints < TEST_POINTS.length * 0.6) {
-        return {
-          isValid: false,
-          error: "No se pudo evaluar. Verifica el formato exacto requerido.",
-          maxError: null
+        return { 
+          isValid: false, 
+          error: "No se pudo evaluar la expresión. Verifica el formato." 
         };
       }
-      
+
       return {
         isValid: maxError < TOLERANCE,
-        error: maxError < TOLERANCE ? null : `Error relativo máximo: ${maxError.toExponential(2)}`,
+        error: maxError < TOLERANCE ? null : `Error máximo: ${maxError.toExponential(2)}`,
         maxError: maxError
       };
     } catch (e) {
       return {
         isValid: false,
-        error: `Error de evaluación: ${e.message}`
+        error: `Error: ${e.message}`
       };
     }
   }
@@ -265,9 +261,9 @@
         <div class="question" data-type="theory" data-index="${i}">
           <p><strong>Pregunta teórica ${i+1}:</strong> ${q.question}</p>
           ${shuffledOptions.map((opt, idx) => `
-            <label><p>
+            <label>
               <input type="radio" name="theory-${i}" value="${idx}">
-              ${opt}</p>
+              ${opt}
             </label>
           `).join('')}
           <div class="feedback hidden"></div>
@@ -322,9 +318,8 @@
         <div class="question" data-type="practical" data-index="${i + 2}">
           <p><strong>Ejercicio práctico ${i+1}:</strong> ${question}</p>
           <div class="param-info">Parámetros: ${paramsInfo}</div>
-          <input type="text" placeholder="Ejemplo: (4/3)+(2/3)*exp(-3*x)" class="answer-input">
-          <div class="strict-format">FORMATO ESTRICTO REQUERIDO (ver ayuda)</div>
-          <div class="format-help">Usa * para multiplicación. Funciones: exp(), sin(), cos(). Sin espacios.</div>
+          <input type="text" placeholder="Ejemplo: 2*cos(4*x) + 3*exp(-2*x)" class="answer-input">
+          <div class="format-help">Usa * para multiplicación. Ejemplo: 2*cos(3*x)</div>
           <div class="feedback hidden"></div>
         </div>
       `;
@@ -373,7 +368,7 @@
             <strong>Tu respuesta:</strong> <code>${userInput || "(vacío)"}</code><br>
             <strong>Error:</strong> ${evaluation.error}<br>
             <strong>Solución esperada:</strong> <span class="mathjax">${q.solution_latex}</span>
-            ${evaluation.maxError ? `<div class="error-details">Error relativo máximo: ${evaluation.maxError.toExponential(2)}</div>` : ''}
+            ${evaluation.maxError ? `<div class="error-details">Error máximo: ${evaluation.maxError.toExponential(2)}</div>` : ''}
             ${q.steps.length > 0 ? `
             <div class="solution-steps">
               <strong>Pasos de solución:</strong>
