@@ -165,14 +165,18 @@
   let examQuestions = [];
   let currentParams = {};
 
-  // ===================== EVALUADOR ROBUSTO =====================
+  // ===================== EVALUADOR MEJORADO =====================
   function safeEvaluate(expr, scope) {
     try {
-      // Convertir ^ a ** para compatibilidad
-      const processedExpr = expr.replace(/\^/g, '**')
-                               .replace(/e\^\(/g, 'exp(')
-                               .replace(/(\d)([a-zA-Z\(])/g, '$1*$2');
-      
+      // Preprocesamiento para manejar casos especiales
+      const processedExpr = expr
+        .replace(/\s+/g, '') // Eliminar espacios
+        .replace(/\^/g, '**') // Convertir ^ a **
+        .replace(/(\d)\.(\D)/g, '$1$2') // 3.x → 3x
+        .replace(/([a-zA-Z])\.(\d)/g, '$1$2') // x.3 → x3
+        .replace(/(\d)\.([+-])/g, '$1$2') // 3.+x → 3+x
+        .replace(/([a-zA-Z])\.([+-])/g, '$1$2'); // x.+3 → x+3
+
       // Crear función de evaluación
       const evalFn = new Function(...Object.keys(scope), 
         `'use strict'; try { return ${processedExpr}; } catch(e) { return NaN; }`);
@@ -204,7 +208,9 @@
           const userVal = safeEvaluate(userInput, scope);
           const expectedVal = safeEvaluate(expectedSolution, scope);
 
-          if (!isFinite(userVal)) continue;
+          if (isNaN(userVal)) {
+            throw new Error("Resultado no numérico");
+          }
           if (Math.abs(expectedVal) > 1e12) continue;
 
           const error = Math.abs(userVal - expectedVal) / (1 + Math.abs(expectedVal));
@@ -218,9 +224,9 @@
       if (validPoints < TEST_POINTS.length * 0.6) {
         return { 
           isValid: false, 
-          error: `No se pudo evaluar. Verifica:
-            - Usas funciones como cos(), sin(), exp() correctamente
-            - No faltan operadores de multiplicación (*)
+          error: `Error al evaluar. Verifica:
+            - Usa puntos decimales sin espacios (0.24 no 0. 24)
+            - Usa * para multiplicación (-2.24*e no -2.24e)
             - La expresión está completa` 
         };
       }
