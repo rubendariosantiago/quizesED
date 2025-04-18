@@ -29,8 +29,8 @@ const practicalTemplates = [
   },
   {
     type: "trigonometrica_coseno",
-    template: "Resuelve: \\( y' + {{a}}y = {{b}} \\cos({{c}}x) \\) con \\( y(0) = {{d}} \\)",
-    solution_mathjs: "( {{a}} * {{b}} *cos( {{c}} *x) + {{b}} *{{c}} *sin( {{c}} *x))/({{a*a}} + {{c*c}}) + ({{d}} - ( {{a}}*{{b}} )/({{a*a}} + {{c*c}}))*exp(-{{a}}*x)",
+    template: "Resuelve: $$ y' + {{a}}y = {{b}} \\cos({{c}}x) $$ con \\( y(0) = {{d}} \\)",
+    solution_mathjs: "({{a}}*{{b}}*cos({{c}}*x)+{{b}}*{{c}}*sin({{c}}*x))/({{a*a}}+{{c*c}}) + ({{d}}-({{a}}*{{b}})/({{a*a}}+{{c*c}}))*exp(-{{a}}*x)",
     solution_latex: "$$\\frac{ {{a}}{{b}} \\cos({{c}}x) + {{b}}{{c}} \\sin({{c}}x) }{ {{a}}^2 + {{c}}^2 } + \\left( {{d}} - \\frac{ {{a}}{{b}} }{ {{a}}^2 + {{c}}^2 } \\right) e^{-{{a}}x}$$",
     steps: [
       "Primmero se identifica la ecuación diferencial lineal de primer orden: \\[ y' + {{a}}y = {{b}}\\cos({{c}}x) \\]",
